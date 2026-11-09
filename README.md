@@ -46,6 +46,11 @@ rows to 26px, pattern banks to 44px — and a fast double tap on the grid will n
 be read as a zoom gesture. Note that iOS silences Web Audio entirely while the
 device is in silent mode.
 
+Pinch-zoom and the rubber-band bounce are suppressed only in an installed,
+standalone launch, decided at runtime rather than in the markup. In a browser
+tab zoom stays available, which is what it is there for — and iOS ignores the
+request in a tab regardless, while Android Chrome would honour it.
+
 ## The voices
 
 Five drum voices (kick, snare, closed hat, open hat, clap) are synthesised from

@@ -34,7 +34,13 @@ img{max-width:100%}
   --f-body:"Archivo",system-ui,Helvetica,Arial,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
   color-scheme:light;
+  /* Stop iOS inflating the type when the device rotates — this is a fixed
+     control panel, and its sizes are deliberate. */
+  -webkit-text-size-adjust:100%; text-size-adjust:100%;
 }
+/* Only in an installed, standalone launch: no rubber-band bounce at the
+   edges, which is the clearest remaining tell that this is a web page. */
+:root.installed, :root.installed body{overscroll-behavior:none}
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --panel:#1b1d20; --panel-2:#25282c; --well:#121416; --edge:rgba(255,255,255,.13);
@@ -1657,6 +1663,25 @@ function wire(){
   });
 }
 
+/* Pinch-zoom is suppressed ONLY when launched from a home screen, never in a
+   browser tab, where zoom is an accessibility affordance and iOS ignores the
+   request anyway while Android Chrome honours it. Updating the meta at runtime
+   rather than in the markup is what makes that distinction possible. */
+function isInstalled(){
+  try{
+    if(window.navigator && window.navigator.standalone === true) return true;
+    return !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  }catch(e){ return false; }
+}
+function applyInstalledChrome(){
+  if(!isInstalled()) return false;
+  document.documentElement.classList.add("installed");
+  const m = document.querySelector('meta[name="viewport"]');
+  if(m) m.setAttribute("content",
+    "width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover");
+  return true;
+}
+
 /* ======================= boot ======================= */
 function boot(initial){
   state = freshState();
@@ -1665,6 +1690,7 @@ function boot(initial){
      browser left off, so a refresh never costs you the bar you just built. */
   const resume = (initial && initial.code) ? initial.code : (loadLocal() || {}).code;
   if(resume){ try{ state = freshState(); loadCode(resume); }catch(e){ state = freshState(); try{ loadCode(JSON.stringify(DEFAULT_SONG)); }catch(e2){} } }
+  applyInstalledChrome();
   buildSeq(); wire(); paintAll(); drawLoop();
   document.getElementById("code").value = dumpCode();
   setPos(null);
