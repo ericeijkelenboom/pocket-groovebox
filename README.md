@@ -28,14 +28,14 @@ from it by `build.py` and committed so the site can be served directly.
 | `src/styles.css` | the stylesheet |
 | `src/js/*.js` | the application, one concern per file |
 | `songs/default.json` | the song the page opens on — the only place it is defined |
-| `tests/*.test.js` | tests for the pure modules |
+| `tests/*.test.js` | tests for the pure modules and for the build |
 | `build.py` | assembles the two pages |
 | `make_icon.py` | regenerates `icon.png` |
 | `index.html` | **generated** — the standalone page |
 | `groovebox.html` | **generated** — the Claude Artifact source |
 
 ```
-npm test        # 33 tests, no dependencies
+npm test        # 42 tests, no dependencies
 npm run build   # regenerate index.html and groovebox.html
 ```
 
@@ -58,6 +58,14 @@ code that can only be judged with a browser and a pair of ears is not pretending
 otherwise. Pitch spelling, note parsing, scale membership, swing offsets and the
 pattern-code format are all covered, including a round-trip over every row of
 the shipped song.
+
+The browser code is covered indirectly, by testing the thing that breaks when it
+is rearranged: `tests/build.test.js` checks that the load order lists every
+module and no module twice, that no name is declared in two of them — they share
+one scope once concatenated, so a collision shadows silently — that no module
+syntax survives into the bundle, that both pages are built from the same source,
+and that the committed pages were built from the current `songs/default.json`
+rather than a stale copy.
 
 `groovebox.html` carries no `<html>` or `<head>`: the Artifact platform supplies
 those. `build.py` adds them for `index.html`, along with the home-screen

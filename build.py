@@ -33,7 +33,12 @@ LOAD_ORDER = [
     "synth.js",       # the three synth voices, and the screen wake lock
     "transport.js",   # scheduler, playhead, follow-play
     "editing.js",     # placing and clearing steps and notes
-    "render.js",      # every render and paint function
+    "ui-banks.js",    # the pattern bank
+    "ui-sequencer.js",# the step grid
+    "ui-roll.js",     # the piano roll
+    "ui-editor.js",   # the voice editor
+    "ui-song.js",     # the song chain and the header controls
+    "ui.js",          # paintAll, the one entry point the app calls
     "serialize.js",   # whole-machine read and write
     "storage.js",     # autosave and named save slots
     "share.js",       # links, file import and export

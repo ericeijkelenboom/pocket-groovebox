@@ -1028,9 +1028,9 @@ function rollClick(id, i, note, additive){
 
 /* ======================= render ======================= */
 
-/* ---------- render.js ---------- */
-/* Every render and paint function. build* creates DOM once; paint* updates
-   classes on DOM that already exists. */
+/* ---------- ui-banks.js ---------- */
+/* The pattern bank: which pattern is selected, which is sounding, and which
+   ones hold anything at all. */
 
 function renderBanks(){
   const host = document.getElementById("banks");
@@ -1058,6 +1058,12 @@ function renderBanks(){
     el.classList.toggle("has", has);
   }
 }
+
+/* ---------- ui-sequencer.js ---------- */
+/* The step grid. buildSeq creates the rows once; paintSteps only moves
+   classes around on DOM that already exists, because it runs on every edit
+   and on every pattern change while the song plays. */
+
 function buildSeq(){
   const host = document.getElementById("seq");
   host.innerHTML = "";
@@ -1123,6 +1129,11 @@ function paintSteps(){
     }
   }
 }
+
+/* ---------- ui-roll.js ---------- */
+/* The piano roll, for the three pitched voices. Its row range covers the
+   voice's own register plus any note already written outside it. */
+
 function rollRange(id){
   const p = state.tracks[id];
   const c = (TBY[id].center || 60) + p.oct*12;
@@ -1169,6 +1180,11 @@ function paintRoll(){
     c.classList.toggle("acc", !!(hit && hit.v>=0.98));
   });
 }
+
+/* ---------- ui-editor.js ---------- */
+/* The voice editor below the grid: wave, patch and the parameter faders,
+   built from the schema in config.js. */
+
 function renderEditor(){
   const t = TBY[state.sel];
   const head = document.getElementById("edName");
@@ -1225,6 +1241,10 @@ function renderEditor(){
     host.appendChild(wrap);
   }
 }
+
+/* ---------- ui-song.js ---------- */
+/* The song chain and the global controls across the header. */
+
 function renderSong(){
   const host = document.getElementById("slots");
   if(host.children.length !== 16){
@@ -1267,6 +1287,11 @@ function renderGlobals(){
   fb.disabled = state.mode !== "song";
   fb.style.opacity = state.mode === "song" ? "" : "0.45";
 }
+
+/* ---------- ui.js ---------- */
+/* The one entry point the rest of the app calls after it changes something.
+   Ordered so structure is built before the classes that decorate it. */
+
 function paintAll(){
   renderBanks(); paintSteps(); renderEditor(); buildRoll(); paintRoll(); renderSong(); renderGlobals();
 }
