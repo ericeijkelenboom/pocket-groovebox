@@ -243,8 +243,10 @@ button,.st,.cell,.bank,.slot,input[type=range]{touch-action:manipulation}
   <div class="utils">
     <button class="btn" id="clrTrack">Clear track</button>
     <button class="btn" id="clrPat">Clear pattern</button>
+    <button class="btn" id="clrAll">Clear all</button>
     <button class="btn" id="copyPat">Copy</button>
     <button class="btn" id="pastePat">Paste</button>
+    <button class="btn" id="loadDemo">Load demo</button>
     <button class="btn" id="undo">Undo</button>
   </div>
 </section>
@@ -272,6 +274,7 @@ button,.st,.cell,.bank,.slot,input[type=range]{touch-action:manipulation}
     <dt>Keyboard</dt><dd><b>Space</b> plays and stops. <b>A W S E D F T G Y H U J K</b> plays the selected synth voice like one octave of a piano (A = C).</dd>
     <dt>Accent</dt><dd>On the piano roll, shift-click an already-lit note to toggle its accent.</dd>
     <dt>Mute</dt><dd>The small <b>M</b> next to a track name.</dd>
+    <dt>Clear all / Load demo</dt><dd>Clear all empties every pattern and the song chain. Load demo puts the original four-bar song back. Both replace everything, and Undo reverses either one.</dd>
     <dt>Follow</dt><dd>In song mode, keeps the step grid on whichever pattern is playing. Clicking a pattern by hand switches it off so your edits stay put.</dd>
     <dt>Saving</dt><dd>Everything autosaves as you work, so a refresh picks up where you left off. Use <b>Saved songs</b> to keep more than one under a name.</dd>
   </dl>
@@ -392,7 +395,7 @@ function freshState(){
   const s = {
     bpm:112, swing:0.58, swingRes:8, dlyTime:3, master:0.8, key:0, scale:"Natural minor",
     cur:"A", mode:"song", sel:"kick", follow:true,
-    song:["E","F","G","H",null,null,null,null,null,null,null,null,null,null,null,null],
+    song:new Array(16).fill(null),
     patterns:{}, tracks:{}
   };
   for (const b of BANKS) s.patterns[b] = emptyPattern();
@@ -1547,6 +1550,25 @@ function wire(){
     if(!clipboard) return flash("Copy a pattern first", "err");
     snapshot(); state.patterns[state.cur] = JSON.parse(JSON.stringify(clipboard));
     paintAll(); flash("Pasted into pattern "+state.cur, "ok");
+  });
+  /* Both replace the whole machine rather than merging, and both go through
+     snapshot() first, so Undo brings your song straight back. */
+  document.getElementById("clrAll").addEventListener("click", ()=>{
+    snapshot();
+    const sel = state.sel;
+    state = freshState();
+    state.sel = sel; state.mode = "pattern"; state.cur = "A";
+    paintAll();
+    document.getElementById("code").value = dumpCode();
+    flash("Everything cleared — Undo brings it back", "ok");
+  });
+  document.getElementById("loadDemo").addEventListener("click", ()=>{
+    snapshot();
+    state = freshState();
+    try{ loadCode(JSON.stringify(DEFAULT_SONG)); }catch(e){}
+    paintAll();
+    document.getElementById("code").value = dumpCode();
+    flash("Demo song loaded — Undo brings yours back", "ok");
   });
   document.getElementById("undo").addEventListener("click", doUndo);
   document.getElementById("follow").addEventListener("click", ()=>{
