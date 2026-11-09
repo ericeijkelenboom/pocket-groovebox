@@ -231,6 +231,7 @@ details.help[open] summary{margin-bottom:10px;color:var(--ink)}
 <section class="panel banks">
   <span class="lbl">Pattern</span>
   <div class="bankrow" id="banks"></div>
+  <button class="btn" id="follow" title="In song mode, show whichever pattern is playing">Follow</button>
   <div class="utils">
     <button class="btn" id="clrTrack">Clear track</button>
     <button class="btn" id="clrPat">Clear pattern</button>
@@ -263,6 +264,7 @@ details.help[open] summary{margin-bottom:10px;color:var(--ink)}
     <dt>Keyboard</dt><dd><b>Space</b> plays and stops. <b>A W S E D F T G Y H U J K</b> plays the selected synth voice like one octave of a piano (A = C).</dd>
     <dt>Accent</dt><dd>On the piano roll, shift-click an already-lit note to toggle its accent.</dd>
     <dt>Mute</dt><dd>The small <b>M</b> next to a track name.</dd>
+    <dt>Follow</dt><dd>In song mode, keeps the step grid on whichever pattern is playing. Clicking a pattern by hand switches it off so your edits stay put.</dd>
     <dt>Saving</dt><dd>Everything autosaves as you work, so a refresh picks up where you left off. Use <b>Saved songs</b> to keep more than one under a name.</dd>
   </dl>
   <h3>Pattern code</h3>
@@ -381,7 +383,7 @@ function emptyPattern(){
 function freshState(){
   const s = {
     bpm:112, swing:0.58, swingRes:8, dlyTime:3, master:0.8, key:0, scale:"Natural minor",
-    cur:"E", mode:"song", sel:"kick",
+    cur:"A", mode:"song", sel:"kick", follow:true,
     song:["E","F","G","H",null,null,null,null,null,null,null,null,null,null,null,null],
     patterns:{}, tracks:{}
   };
@@ -732,6 +734,13 @@ function drawLoop(){
   requestAnimationFrame(drawLoop);
 }
 function highlight(i, pat){
+  /* Follow-play: bring the editor to whichever pattern is sounding, at the
+     moment it starts sounding. Only when the song actually moved on, so this
+     is not a repaint every sixteenth. */
+  if(state.follow && state.mode === "song" && pat !== state.cur && state.patterns[pat]){
+    state.cur = pat;
+    paintSteps(); paintRoll();
+  }
   document.querySelectorAll(".st.cue,.cell.cue,.rk.cue").forEach(e=>e.classList.remove("cue"));
   document.querySelectorAll('[data-col="'+i+'"]').forEach(e=>e.classList.add("cue"));
   setPos(pat, i);
@@ -816,7 +825,12 @@ function renderBanks(){
       const el = document.createElement("button");
       el.className = "bank"; el.textContent = b; el.dataset.bank = b;
       el.setAttribute("aria-label","Pattern "+b);
-      el.addEventListener("click", ()=>{ state.cur = b; paintAll(); });
+      /* Choosing a pattern by hand means you want to edit it, so stop following. */
+      el.addEventListener("click", ()=>{
+        state.cur = b;
+        if(state.mode === "song") state.follow = false;
+        paintAll();
+      });
       host.appendChild(el);
     }
   }
@@ -1033,6 +1047,10 @@ function renderGlobals(){
   document.getElementById("key").value = String(state.key);
   document.getElementById("scale").value = state.scale;
   document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("on", b.dataset.mode === state.mode));
+  const fb = document.getElementById("follow");
+  fb.classList.toggle("on", state.follow);
+  fb.disabled = state.mode !== "song";
+  fb.style.opacity = state.mode === "song" ? "" : "0.45";
 }
 function paintAll(){
   renderBanks(); paintSteps(); renderEditor(); buildRoll(); paintRoll(); renderSong(); renderGlobals();
@@ -1067,7 +1085,8 @@ function strToTrack(type, s){
 }
 function dumpCode(){
   const o = {v:1, bpm:state.bpm, swing:+state.swing.toFixed(2), swingRes:state.swingRes, dlyTime:state.dlyTime, key:state.key, scale:state.scale,
-             mode:state.mode, cur:state.cur, song:state.song.filter(Boolean).join(" "), pat:{}, trk:{}};
+             mode:state.mode, cur:state.cur, follow:state.follow,
+             song:state.song.filter(Boolean).join(" "), pat:{}, trk:{}};
   for(const b of BANKS){
     const pat = state.patterns[b], row = {};
     for(const t of TRACKS){
@@ -1098,6 +1117,7 @@ function loadCode(txt){
   if(typeof o.scale === "string" && SCALES[o.scale]) state.scale = o.scale;
   if(o.mode === "song" || o.mode === "pattern") state.mode = o.mode;
   if(typeof o.cur === "string" && state.patterns[o.cur]) state.cur = o.cur;
+  if(typeof o.follow === "boolean") state.follow = o.follow;
   if(typeof o.sel === "string" && TBY[o.sel]) state.sel = o.sel;
   if(o.song){
     const list = (typeof o.song === "string" ? o.song.trim().split(/[\s,]+/) : o.song)
@@ -1160,12 +1180,18 @@ async function writeAutosave(code){
 }
 /* One watcher instead of a hook on every control: it writes only when the
    machine's state has actually changed, never on an unchanged tick. */
+/* Which pattern is on screen is not an edit — and with Follow on it changes
+   every bar — so it is left out of the change test. */
+function fingerprint(code){
+  try{ const o = JSON.parse(code); delete o.cur; return JSON.stringify(o); }
+  catch(e){ return code; }
+}
 function startAutosave(){
-  lastCode = dumpCode();
+  lastCode = fingerprint(dumpCode());
   setInterval(()=>{
-    const code = dumpCode();
-    if(code === lastCode) return;
-    lastCode = code;
+    const code = dumpCode(), fp = fingerprint(code);
+    if(fp === lastCode) return;
+    lastCode = fp;
     saveLocal(code);
     clearTimeout(dbTimer);
     dbTimer = setTimeout(()=>writeAutosave(code), 1500);
@@ -1454,6 +1480,11 @@ function wire(){
     paintAll(); flash("Pasted into pattern "+state.cur, "ok");
   });
   document.getElementById("undo").addEventListener("click", doUndo);
+  document.getElementById("follow").addEventListener("click", ()=>{
+    state.follow = !state.follow;
+    if(state.follow && playing && state.mode === "song") state.cur = playPat;
+    paintAll();
+  });
 
   const nameIn = document.getElementById("saveName");
   document.getElementById("saveBtn").addEventListener("click", ()=>{

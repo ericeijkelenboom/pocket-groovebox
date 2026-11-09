@@ -1,5 +1,7 @@
 # Pocket Groovebox MF-1
 
+**[Play it &rarr;](https://ericeijkelenboom.github.io/pocket-groovebox/)**
+
 A playable groovebox in a single HTML file. Eight voices, a 16-step sequencer,
 eight patterns chained into a song. No dependencies, no build step, no samples —
 every sound is synthesised with the Web Audio API.
@@ -10,8 +12,9 @@ to buy one.
 
 ## Run it
 
-Open `index.html` in a browser. Press Play. Sound starts on the first click,
-as browsers require.
+Live at **https://ericeijkelenboom.github.io/pocket-groovebox/**, or clone the
+repo and open `index.html` in a browser. Press Play; sound starts on the first
+click, as browsers require.
 
 ## Layout
 
