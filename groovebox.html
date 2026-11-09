@@ -239,7 +239,7 @@ button,.st,.cell,.bank,.slot,input[type=range]{touch-action:manipulation}
       <span class="lbl">Scale</span>
       <select id="scale"></select>
     </div>
-    <p class="hint" style="flex-basis:100%;margin:0">Key and scale light up the matching notes on a synth voice&rsquo;s piano roll, so select Bass, Lead or Pad to see them take effect. They guide what you play next; they do not transpose what is already there.</p>
+    <p class="hint" style="flex-basis:100%;margin:0">Changing <b>Key</b> transposes the whole song, including while it plays. <b>Scale</b> only lights up the matching notes on a synth voice&rsquo;s piano roll, to guide what you play next — it leaves the notes alone.</p>
   </div>
 </header>
 
@@ -281,7 +281,8 @@ button,.st,.cell,.bank,.slot,input[type=range]{touch-action:manipulation}
     <dt>Keyboard</dt><dd><b>Space</b> plays and stops. <b>A W S E D F T G Y H U J K</b> plays the selected synth voice like one octave of a piano (A = C).</dd>
     <dt>Accent</dt><dd>On the piano roll, shift-click an already-lit note to toggle its accent.</dd>
     <dt>Mute</dt><dd>The small <b>M</b> next to a track name.</dd>
-    <dt>Key and scale</dt><dd>They shade the piano roll — bright for notes in the scale, dim for notes outside it, blue for the root — and set which note a step starts on. They change nothing you have already placed, and have no visible effect while a drum track is selected.</dd>
+    <dt>Key</dt><dd>Transposes every pitched note in every pattern by the shortest route, so C to B goes down one semitone rather than up eleven. It applies while the transport is running, and Undo reverses it. Drums are left alone.</dd>
+    <dt>Scale</dt><dd>Shades the piano roll &mdash; bright for notes in the scale, dim for those outside it, blue for the root &mdash; and sets which note a step starts on. It changes nothing you have already placed, so it has no visible effect while a drum track is selected.</dd>
     <dt>Clear all / Load demo</dt><dd>Clear all empties every pattern and the song chain. Load demo puts the original four-bar song back. Both replace everything, and Undo reverses either one.</dd>
     <dt>Follow</dt><dd>In song mode, keeps the step grid on whichever pattern is playing. Clicking a pattern by hand switches it off so your edits stay put.</dd>
     <dt>Saving</dt><dd>Everything autosaves as you work, so a refresh picks up where you left off. Use <b>Saved songs</b> to keep more than one under a name.</dd>
@@ -423,6 +424,43 @@ function freshState(){
 /* The key's root note sitting in this voice's own register. */
 
 /* ======================= audio ======================= */
+
+/**
+ * Semitones to move to get from one key to another, by the shortest route.
+ * C to B is -1, not +11, so a key change does not jump the music an octave.
+ */
+function semitonesBetweenKeys(fromKey, toKey){
+  let d = (toKey - fromKey) % 12;
+  if(d > 6) d -= 12;
+  if(d < -6) d += 12;
+  return d;
+}
+
+/**
+ * Every pitched note in every pattern, moved by `semitones`. Drum rows are
+ * copied untouched. Returns a new set of patterns; throws RangeError rather
+ * than silently clamping if a note would leave the MIDI range, so a key change
+ * either applies in full or not at all.
+ */
+function transposePatterns(patterns, semitones){
+  const pitched = new Set(TRACKS.filter(t => t.type === "synth").map(t => t.id));
+  const out = {};
+  for(const bank of Object.keys(patterns)){
+    const rows = patterns[bank], copy = {};
+    for(const id of Object.keys(rows)){
+      const row = rows[id];
+      if(!pitched.has(id) || !semitones){ copy[id] = row.slice(); continue; }
+      copy[id] = row.map(cell => cell && cell.map(note => {
+        const moved = note.n + semitones;
+        if(moved < 0 || moved > 127)
+          throw new RangeError(`${note.n} would leave the MIDI range`);
+        return Object.assign({}, note, {n: moved});
+      }));
+    }
+    out[bank] = copy;
+  }
+  return out;
+}
 
 /* ---------- songs/default.json (generated) ---------- */
 const DEFAULT_SONG = {
@@ -1723,7 +1761,28 @@ function wire(){
 
   const key = document.getElementById("key");
   PC.forEach((n,i)=>{ const o = document.createElement("option"); o.value = i; o.textContent = n; key.appendChild(o); });
-  key.addEventListener("change", ()=>{ state.key = +key.value; buildRoll(); paintRoll(); });
+  /* Changing the key transposes the whole song by the shortest route, which is
+     what you expect of a Key control and works while the transport runs — the
+     next scheduled step picks it up. Scale cannot do the same: moving between,
+     say, minor and major has no one correct mapping for notes that leave the
+     scale, so it stays a guide. */
+  key.addEventListener("change", ()=>{
+    const want = +key.value;
+    const by = semitonesBetweenKeys(state.key, want);
+    try{
+      const moved = transposePatterns(state.patterns, by);
+      snapshot();
+      state.patterns = moved;
+      state.key = want;
+      paintAll();
+      document.getElementById("code").value = dumpCode();
+      flash(by === 0 ? "Key set to " + PC[want]
+                     : "Transposed to " + PC[want] + " (" + (by > 0 ? "+" : "") + by + " semitones)", "ok");
+    }catch(e){
+      key.value = String(state.key);
+      flash("That key would push a note out of range \u2014 move the line first", "err");
+    }
+  });
   const sc = document.getElementById("scale");
   Object.keys(SCALES).forEach(n=>{ const o = document.createElement("option"); o.value = n; o.textContent = n; sc.appendChild(o); });
   sc.addEventListener("change", ()=>{ state.scale = sc.value; buildRoll(); paintRoll(); });

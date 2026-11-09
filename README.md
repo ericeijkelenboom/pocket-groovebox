@@ -29,6 +29,12 @@ Each synth voice declares a `center` — the MIDI note its piano roll is built
 around — so its Octave control stays a true transpose and a label on the roll
 always names the pitch you hear.
 
+Changing Key transposes the whole song by the shortest route — C to B goes down
+one semitone, not up eleven — and applies while the transport is running. Scale
+does not transpose: moving between, say, minor and major has no single correct
+mapping for the notes that fall outside the new scale, so it stays a guide,
+shading the piano roll rather than quietly rewriting the music.
+
 Swing applies at a grid you choose. On the 1/8 grid every second eighth is
 pushed late; on the 1/16 grid every second sixteenth is. A pattern written in
 eighth notes will not swing on the 1/16 grid, because each of its notes is the
@@ -112,7 +118,7 @@ in a tab regardless, while Android Chrome would honour it.
 ## Development
 
 ```
-npm test        # 42 tests, no dependencies
+npm test        # 51 tests, no dependencies
 npm run build   # regenerate index.html and groovebox.html
 ```
 

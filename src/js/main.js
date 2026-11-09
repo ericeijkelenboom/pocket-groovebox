@@ -22,7 +22,28 @@ function wire(){
 
   const key = document.getElementById("key");
   PC.forEach((n,i)=>{ const o = document.createElement("option"); o.value = i; o.textContent = n; key.appendChild(o); });
-  key.addEventListener("change", ()=>{ state.key = +key.value; buildRoll(); paintRoll(); });
+  /* Changing the key transposes the whole song by the shortest route, which is
+     what you expect of a Key control and works while the transport runs — the
+     next scheduled step picks it up. Scale cannot do the same: moving between,
+     say, minor and major has no one correct mapping for notes that leave the
+     scale, so it stays a guide. */
+  key.addEventListener("change", ()=>{
+    const want = +key.value;
+    const by = semitonesBetweenKeys(state.key, want);
+    try{
+      const moved = transposePatterns(state.patterns, by);
+      snapshot();
+      state.patterns = moved;
+      state.key = want;
+      paintAll();
+      document.getElementById("code").value = dumpCode();
+      flash(by === 0 ? "Key set to " + PC[want]
+                     : "Transposed to " + PC[want] + " (" + (by > 0 ? "+" : "") + by + " semitones)", "ok");
+    }catch(e){
+      key.value = String(state.key);
+      flash("That key would push a note out of range \u2014 move the line first", "err");
+    }
+  });
   const sc = document.getElementById("scale");
   Object.keys(SCALES).forEach(n=>{ const o = document.createElement("option"); o.value = n; o.textContent = n; sc.appendChild(o); });
   sc.addEventListener("change", ()=>{ state.scale = sc.value; buildRoll(); paintRoll(); });

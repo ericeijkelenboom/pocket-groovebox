@@ -25,3 +25,40 @@ export function freshState(){
 /* The key's root note sitting in this voice's own register. */
 
 /* ======================= audio ======================= */
+
+/**
+ * Semitones to move to get from one key to another, by the shortest route.
+ * C to B is -1, not +11, so a key change does not jump the music an octave.
+ */
+export function semitonesBetweenKeys(fromKey, toKey){
+  let d = (toKey - fromKey) % 12;
+  if(d > 6) d -= 12;
+  if(d < -6) d += 12;
+  return d;
+}
+
+/**
+ * Every pitched note in every pattern, moved by `semitones`. Drum rows are
+ * copied untouched. Returns a new set of patterns; throws RangeError rather
+ * than silently clamping if a note would leave the MIDI range, so a key change
+ * either applies in full or not at all.
+ */
+export function transposePatterns(patterns, semitones){
+  const pitched = new Set(TRACKS.filter(t => t.type === "synth").map(t => t.id));
+  const out = {};
+  for(const bank of Object.keys(patterns)){
+    const rows = patterns[bank], copy = {};
+    for(const id of Object.keys(rows)){
+      const row = rows[id];
+      if(!pitched.has(id) || !semitones){ copy[id] = row.slice(); continue; }
+      copy[id] = row.map(cell => cell && cell.map(note => {
+        const moved = note.n + semitones;
+        if(moved < 0 || moved > 127)
+          throw new RangeError(`${note.n} would leave the MIDI range`);
+        return Object.assign({}, note, {n: moved});
+      }));
+    }
+    out[bank] = copy;
+  }
+  return out;
+}
