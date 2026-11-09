@@ -87,7 +87,8 @@ row. That makes codes easy to pass around as diffs.
 There is no backend, so a visitor's work lives in three places, each answering a
 different question.
 
-**Keep my work** — `localStorage`, written on every change and restored on load.
+**Keep my work** — `localStorage`, both as an autosave written on every change
+and restored on load, and as named save slots you can name, load and delete.
 A song is about 790 bytes, so the ~5 MB quota holds thousands. Scoped to one
 browser on one device and wiped by "clear site data", so it is convenience, not
 backup. Note that `localStorage` is scoped per *origin*, not per path: every
@@ -103,9 +104,9 @@ there, putting the previous state into Undo first.
 **Back it up** — Download and Open file, as plain JSON. Portable, diffable, and
 the only form that survives a cleared browser.
 
-Published as a Claude Artifact the page additionally writes to the artifact's
-document store, giving named save slots that persist across devices, and uses
-the `downloads` capability for saving files. Outside that environment
+Published as a Claude Artifact the named slots move to the artifact's document
+store instead, so they persist across devices, and file saving uses the
+`downloads` capability. Outside that environment
 `window.claude` is absent, every capability call resolves to nothing, and the
 page falls back to the three mechanisms above. The URL hash does not survive the
 artifact viewer, which passes only a bare `#name`, so link sharing is a

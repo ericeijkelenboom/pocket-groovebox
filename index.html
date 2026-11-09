@@ -1255,14 +1255,39 @@ function ago(iso){
   if(s < 86400) return Math.round(s/3600) + " h ago";
   return new Date(t).toLocaleDateString();
 }
+/* Named slots in this browser, for when there is no cloud store — the hosted
+   copy has no window.claude, so db never resolves there. */
+const LS_SONGS = "mf1.songs.v1";
+function lsSongs(){
+  try{ const o = JSON.parse(localStorage.getItem(LS_SONGS) || "{}"); return (o && typeof o === "object") ? o : {}; }
+  catch(e){ return {}; }
+}
+function lsSongsWrite(o){
+  try{ localStorage.setItem(LS_SONGS, JSON.stringify(o)); return true; }catch(e){ return false; }
+}
+function localSaveList(){
+  const o = lsSongs();
+  return Object.keys(o)
+    .map(id=>({id, name:o[id].name, code:o[id].code, savedAt:o[id].savedAt}))
+    .sort((a,b)=>(Date.parse(b.savedAt)||0) - (Date.parse(a.savedAt)||0));
+}
 async function saveNamed(name){
-  if(!dbRef) return saveMsg("Storage is not available in this view", "err");
   const id = slugify(name);
-  try{
-    await dbRef.doc("songs/" + id).set({name:name.trim() || id, code:dumpCode(), savedAt:new Date().toISOString()});
-    saveMsg("Saved “" + (name.trim() || id) + "”", "ok");
-    document.getElementById("saveName").value = "";
-  }catch(e){ saveMsg("Could not save (" + ((e && e.code) || "error") + ")", "err"); }
+  const doc = {name:name.trim() || id, code:dumpCode(), savedAt:new Date().toISOString()};
+  if(dbRef){
+    try{
+      await dbRef.doc("songs/" + id).set(doc);
+      saveMsg("Saved “" + doc.name + "”", "ok");
+      document.getElementById("saveName").value = "";
+    }catch(e){ saveMsg("Could not save (" + ((e && e.code) || "error") + ")", "err"); }
+    return;
+  }
+  const all = lsSongs();
+  all[id] = doc;
+  if(!lsSongsWrite(all)) return saveMsg("This browser refused to store it — use Download", "err");
+  saveMsg("Saved “" + doc.name + "” in this browser", "ok");
+  document.getElementById("saveName").value = "";
+  renderSaves(localSaveList());
 }
 /* A live subscription, not a one-shot read: saves made in another window —
    or written for you while this page sits open — appear without a reload.
@@ -1292,7 +1317,7 @@ function renderSaves(items){
   if(!items.length){
     const p = document.createElement("p");
     p.className = "hint"; p.style.margin = "8px 0 0";
-    p.textContent = "No saved songs yet. Name one above and press Save.";
+    p.textContent = "No saved songs yet. Type a name above and press Save.";
     host.appendChild(p);
     return;
   }
@@ -1317,8 +1342,16 @@ function renderSaves(items){
         return;
       }
       clearTimeout(armTimer);
-      try{ await dbRef.doc("songs/" + it.id).delete(); saveMsg("Deleted “" + (it.name || it.id) + "”", "ok"); }
-      catch(e){ saveMsg("Could not delete (" + ((e && e.code) || "error") + ")", "err"); }
+      if(dbRef){
+        try{ await dbRef.doc("songs/" + it.id).delete(); saveMsg("Deleted “" + (it.name || it.id) + "”", "ok"); }
+        catch(e){ saveMsg("Could not delete (" + ((e && e.code) || "error") + ")", "err"); }
+      } else {
+        const all = lsSongs();
+        delete all[it.id];
+        lsSongsWrite(all);
+        saveMsg("Deleted “" + (it.name || it.id) + "”", "ok");
+        renderSaves(localSaveList());
+      }
     });
     row.append(nm, wh, ld, dl);
     host.appendChild(row);
@@ -1341,15 +1374,17 @@ function offerRestore(code, when){
 }
 async function initStorage(){
   const stateEl = document.getElementById("saveState");
+  /* Usable straight away, backed by this browser. use("db") can take up to ten
+     seconds to answer, and saving should not wait on it. */
+  document.getElementById("saveRow").hidden = false;
+  stateEl.textContent = "Saved in this browser, and your work autosaves as you go. Download keeps a copy that survives a cleared browser.";
+  renderSaves(localSaveList());
+
   let db = null;
   try{ db = window.claude && window.claude.use ? await window.claude.use("db") : null; }catch(e){ db = null; }
-  if(!db){
-    stateEl.textContent = "Cloud storage is not available in this view. Your work still autosaves in this browser, and the pattern code below is always a copy you can keep.";
-    return;
-  }
+  if(!db) return;
   dbRef = db;
-  stateEl.textContent = "Your work autosaves as you go. Save it under a name here to keep more than one song. The list below stays current on its own.";
-  document.getElementById("saveRow").hidden = false;
+  stateEl.textContent = "Saved to your account, so these songs follow you between devices. Your work autosaves as you go.";
   watchSaves();
   try{
     const snap = await db.doc("autosave/current").get();
