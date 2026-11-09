@@ -9,7 +9,7 @@
  "mode": "song",
  "cur": "A",
  "follow": true,
- "song": "A B C D",
+ "song": "A B A D",
  "pat": {
   "A": {
    "kick": "x...x...x...x...",
@@ -25,13 +25,6 @@
    "bass": "C3 - - - - - C3 - Ab2 - - F2 - - Eb3 -",
    "lead": "- - G4 - - - Ab4 - - - Bb4 - G4 - - -",
    "pad": "Eb3+Ab3 - - - - - - - F3! - - - - - - -"
-  },
-  "C": {
-   "kick": "x...x...x...x...",
-   "chat": "..x...X...x...x.",
-   "bass": "C3 - - - - - C3 - Ab2 - - - F2 - C2 -",
-   "lead": "- - G4 - - - Ab4 - - - G4 - - - Bb4 -",
-   "pad": "Eb3+G3 - - - - - - - - - - - - - - -"
   },
   "D": {
    "kick": "x...x...x...x...",
