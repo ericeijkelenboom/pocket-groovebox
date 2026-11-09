@@ -10,14 +10,24 @@ function rollRange(id){
   }
   return [lo, hi];
 }
+/* Which roll is on screen, so a repaint can tell itself from a rebuild. */
+let rollShowing = null;
+
 function buildRoll(){
   const t = TBY[state.sel];
   const wrap = document.getElementById("rollwrap"), host = document.getElementById("roll");
   if(t.type !== "synth"){ wrap.hidden = true; host.innerHTML = ""; return; }
   wrap.hidden = false;
   host.style.setProperty("--hue", t.hue);
-  host.innerHTML = "";
   const [lo, hi] = rollRange(t.id);
+  /* Rebuilding wipes the scroll position. Keep it when the same roll is simply
+     being repainted, which is what happens on every edit, and only recentre when
+     the roll is genuinely a different one. */
+  const same = rollShowing && rollShowing.id === t.id
+            && rollShowing.lo === lo && rollShowing.hi === hi;
+  const keepAt = same ? wrap.scrollTop : null;
+  rollShowing = {id: t.id, lo: lo, hi: hi};
+  host.innerHTML = "";
   for(let m = hi; m >= lo; m--){
     const k = document.createElement("button");
     k.className = "keylbl" + (inScale(m) ? " inscale" : "") + (isRoot(m) ? " root" : "");
@@ -33,8 +43,24 @@ function buildRoll(){
       host.appendChild(c);
     }
   }
-  const row = host.querySelector('.keylbl.root');
-  if(row) setTimeout(()=>{ try{ row.scrollIntoView({block:"center"}); }catch(e){} }, 0);
+  /* Never scrollIntoView here: it scrolls the page as well as the roll's own
+     box, which yanks you half a screen away every time you clear or paste.
+     Setting scrollTop moves only the container. */
+  if(keepAt !== null){
+    wrap.scrollTop = keepAt;
+    return;
+  }
+  /* Centre the root nearest this voice's own register, not whichever root
+     happens to be highest. Rows run from hi down to lo, so the index is the
+     distance from the top. */
+  const home = rootNear((TBY[t.id].center || 60) + state.tracks[t.id].oct * 12, state.key);
+  const rows = host.querySelectorAll(".keylbl");
+  const row = rows[hi - home];
+  if(!row) return;
+  try{
+    const box = wrap.getBoundingClientRect(), target = row.getBoundingClientRect();
+    wrap.scrollTop += (target.top - box.top) - (box.height - target.height) / 2;
+  }catch(e){}
 }
 function paintRoll(){
   const t = TBY[state.sel];
