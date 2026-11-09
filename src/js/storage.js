@@ -88,7 +88,7 @@ async function saveNamed(name){
   }
   const all = lsSongs();
   all[id] = doc;
-  if(!lsSongsWrite(all)) return saveMsg("This browser refused to store it — use Download", "err");
+  if(!lsSongsWrite(all)) return saveMsg("This browser refused to store it. Use Download", "err");
   saveMsg("Saved “" + doc.name + "” in this browser", "ok");
   document.getElementById("saveName").value = "";
   renderSaves(localSaveList());
@@ -200,7 +200,6 @@ async function initStorage(){
   }catch(e){ /* nothing newer to offer */ }
 }
 
-/* ======================= share link, files =======================
-   A whole song is about 790 bytes of JSON, ~335 deflated, ~450 characters once
-   base64url'd — small enough to carry in a link. "s=" is compressed, "j=" is
-   plain, for browsers without CompressionStream. */
+/* The shipped song is 1,032 bytes of JSON, 362 once deflated and 485 characters
+   after base64url, small enough to carry in a link. "s=" is the compressed form,
+   "j=" the plain one, for browsers without CompressionStream. */

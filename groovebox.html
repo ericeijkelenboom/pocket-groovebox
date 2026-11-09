@@ -239,7 +239,7 @@ button,.st,.cell,.bank,.slot,input[type=range]{touch-action:manipulation}
       <span class="lbl">Scale</span>
       <select id="scale"></select>
     </div>
-    <p class="hint" style="flex-basis:100%;margin:0">Changing <b>Key</b> transposes the whole song, including while it plays. <b>Scale</b> only lights up the matching notes on a synth voice&rsquo;s piano roll, to guide what you play next — it leaves the notes alone.</p>
+    <p class="hint" style="flex-basis:100%;margin:0">Changing <b>Key</b> transposes the whole song, including while it plays. <b>Scale</b> only lights up the matching notes on a synth voice&rsquo;s piano roll, to guide what you play next. It leaves the notes alone.</p>
   </div>
 </header>
 
@@ -268,7 +268,7 @@ button,.st,.cell,.bank,.slot,input[type=range]{touch-action:manipulation}
 </section>
 
 <section class="panel">
-  <span class="lbl">Song — chain patterns into an arrangement</span>
+  <span class="lbl">Song: chain patterns into an arrangement</span>
   <div class="slots" id="slots"></div>
 </section>
 
@@ -282,7 +282,7 @@ button,.st,.cell,.bank,.slot,input[type=range]{touch-action:manipulation}
     <dt>Accent</dt><dd>On the piano roll, shift-click an already-lit note to toggle its accent.</dd>
     <dt>Mute</dt><dd>The small <b>M</b> next to a track name.</dd>
     <dt>Key</dt><dd>Transposes every pitched note in every pattern by the shortest route, so C to B goes down one semitone rather than up eleven. It applies while the transport is running, and Undo reverses it. Drums are left alone.</dd>
-    <dt>Scale</dt><dd>Shades the piano roll &mdash; bright for notes in the scale, dim for those outside it, blue for the root &mdash; and sets which note a step starts on. It changes nothing you have already placed, so it has no visible effect while a drum track is selected.</dd>
+    <dt>Scale</dt><dd>Shades the piano roll: bright for notes in the scale, dim for those outside it, blue for the root. It also sets which note a step starts on. It changes nothing you have already placed, so it has no visible effect while a drum track is selected.</dd>
     <dt>Clear all / Load demo</dt><dd>Clear all empties every pattern and the song chain. Load demo puts the original four-bar song back. Both replace everything, and Undo reverses either one.</dd>
     <dt>Follow</dt><dd>In song mode, keeps the step grid on whichever pattern is playing. Clicking a pattern by hand switches it off so your edits stay put.</dd>
     <dt>Saving</dt><dd>Everything autosaves as you work, so a refresh picks up where you left off. Use <b>Saved songs</b> to keep more than one under a name.</dd>
@@ -1497,7 +1497,7 @@ async function saveNamed(name){
   }
   const all = lsSongs();
   all[id] = doc;
-  if(!lsSongsWrite(all)) return saveMsg("This browser refused to store it — use Download", "err");
+  if(!lsSongsWrite(all)) return saveMsg("This browser refused to store it. Use Download", "err");
   saveMsg("Saved “" + doc.name + "” in this browser", "ok");
   document.getElementById("saveName").value = "";
   renderSaves(localSaveList());
@@ -1609,10 +1609,9 @@ async function initStorage(){
   }catch(e){ /* nothing newer to offer */ }
 }
 
-/* ======================= share link, files =======================
-   A whole song is about 790 bytes of JSON, ~335 deflated, ~450 characters once
-   base64url'd — small enough to carry in a link. "s=" is compressed, "j=" is
-   plain, for browsers without CompressionStream. */
+/* The shipped song is 1,032 bytes of JSON, 362 once deflated and 485 characters
+   after base64url, small enough to carry in a link. "s=" is the compressed form,
+   "j=" the plain one, for browsers without CompressionStream. */
 
 /* ---------- share.js ---------- */
 /* Carrying a song elsewhere: a link with the song in its hash, and plain JSON
@@ -1664,7 +1663,7 @@ async function copyShareLink(){
   }catch(e){ return flash("Could not build a link", "err"); }
   try{
     await navigator.clipboard.writeText(url);
-    flash("Link copied — " + url.length + " characters", "ok");
+    flash("Link copied, " + url.length + " characters", "ok");
   }catch(e){
     const ta = document.getElementById("code");
     ta.value = url; ta.focus(); ta.select();
@@ -1688,8 +1687,8 @@ async function downloadSong(){
     a.href = url; a.download = name; a.style.display = "none";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 2000);
-    flash("Requested " + name + " — if nothing arrived, use Copy instead", "");
-  }catch(e){ flash("Downloads are not available here — use Copy", "err"); }
+    flash("Requested " + name + ". If nothing arrived, use Copy instead", "");
+  }catch(e){ flash("Downloads are not available here. Use Copy", "err"); }
 }
 function openSongFile(file){
   if(!file) return;
@@ -1719,7 +1718,7 @@ async function applyHash(){
     loadCode(json);
     paintAll();
     document.getElementById("code").value = dumpCode();
-    flash("Loaded from the link — Undo restores what you had", "ok");
+    flash("Loaded from the link. Undo restores what you had", "ok");
     /* The hash is a delivery mechanism, not state: once the song is in, drop it
        so a later reload resumes this browser's autosave instead of re-importing
        over whatever the visitor has since changed. Copy link rebuilds it. */
@@ -1780,7 +1779,7 @@ function wire(){
                      : "Transposed to " + PC[want] + " (" + (by > 0 ? "+" : "") + by + " semitones)", "ok");
     }catch(e){
       key.value = String(state.key);
-      flash("That key would push a note out of range \u2014 move the line first", "err");
+      flash("That key would push a note out of range. Move the line first", "err");
     }
   });
   const sc = document.getElementById("scale");
@@ -1814,7 +1813,7 @@ function wire(){
     state.sel = sel; state.mode = "pattern"; state.cur = "A";
     paintAll();
     document.getElementById("code").value = dumpCode();
-    flash("Everything cleared — Undo brings it back", "ok");
+    flash("Everything cleared. Undo brings it back", "ok");
   });
   document.getElementById("loadDemo").addEventListener("click", ()=>{
     snapshot();
@@ -1822,7 +1821,7 @@ function wire(){
     try{ loadCode(JSON.stringify(DEFAULT_SONG)); }catch(e){}
     paintAll();
     document.getElementById("code").value = dumpCode();
-    flash("Demo song loaded — Undo brings yours back", "ok");
+    flash("Demo song loaded. Undo brings yours back", "ok");
   });
   document.getElementById("undo").addEventListener("click", doUndo);
   document.getElementById("follow").addEventListener("click", ()=>{
@@ -1852,7 +1851,7 @@ function wire(){
     const ta = document.getElementById("code");
     if(!ta.value) ta.value = dumpCode();
     try{ await navigator.clipboard.writeText(ta.value); flash("Copied to clipboard", "ok"); }
-    catch(e){ ta.focus(); ta.select(); flash("Select-all done — press copy on your keyboard", ""); }
+    catch(e){ ta.focus(); ta.select(); flash("Selected. Press copy on your keyboard", ""); }
   });
 
   document.getElementById("shareLink").addEventListener("click", copyShareLink);

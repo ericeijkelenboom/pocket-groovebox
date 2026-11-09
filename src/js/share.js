@@ -47,7 +47,7 @@ async function copyShareLink(){
   }catch(e){ return flash("Could not build a link", "err"); }
   try{
     await navigator.clipboard.writeText(url);
-    flash("Link copied — " + url.length + " characters", "ok");
+    flash("Link copied, " + url.length + " characters", "ok");
   }catch(e){
     const ta = document.getElementById("code");
     ta.value = url; ta.focus(); ta.select();
@@ -71,8 +71,8 @@ async function downloadSong(){
     a.href = url; a.download = name; a.style.display = "none";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 2000);
-    flash("Requested " + name + " — if nothing arrived, use Copy instead", "");
-  }catch(e){ flash("Downloads are not available here — use Copy", "err"); }
+    flash("Requested " + name + ". If nothing arrived, use Copy instead", "");
+  }catch(e){ flash("Downloads are not available here. Use Copy", "err"); }
 }
 function openSongFile(file){
   if(!file) return;
@@ -102,7 +102,7 @@ async function applyHash(){
     loadCode(json);
     paintAll();
     document.getElementById("code").value = dumpCode();
-    flash("Loaded from the link — Undo restores what you had", "ok");
+    flash("Loaded from the link. Undo restores what you had", "ok");
     /* The hash is a delivery mechanism, not state: once the song is in, drop it
        so a later reload resumes this browser's autosave instead of re-importing
        over whatever the visitor has since changed. Copy link rebuilds it. */

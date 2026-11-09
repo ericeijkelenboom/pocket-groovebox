@@ -41,7 +41,7 @@ function wire(){
                      : "Transposed to " + PC[want] + " (" + (by > 0 ? "+" : "") + by + " semitones)", "ok");
     }catch(e){
       key.value = String(state.key);
-      flash("That key would push a note out of range \u2014 move the line first", "err");
+      flash("That key would push a note out of range. Move the line first", "err");
     }
   });
   const sc = document.getElementById("scale");
@@ -75,7 +75,7 @@ function wire(){
     state.sel = sel; state.mode = "pattern"; state.cur = "A";
     paintAll();
     document.getElementById("code").value = dumpCode();
-    flash("Everything cleared — Undo brings it back", "ok");
+    flash("Everything cleared. Undo brings it back", "ok");
   });
   document.getElementById("loadDemo").addEventListener("click", ()=>{
     snapshot();
@@ -83,7 +83,7 @@ function wire(){
     try{ loadCode(JSON.stringify(DEFAULT_SONG)); }catch(e){}
     paintAll();
     document.getElementById("code").value = dumpCode();
-    flash("Demo song loaded — Undo brings yours back", "ok");
+    flash("Demo song loaded. Undo brings yours back", "ok");
   });
   document.getElementById("undo").addEventListener("click", doUndo);
   document.getElementById("follow").addEventListener("click", ()=>{
@@ -113,7 +113,7 @@ function wire(){
     const ta = document.getElementById("code");
     if(!ta.value) ta.value = dumpCode();
     try{ await navigator.clipboard.writeText(ta.value); flash("Copied to clipboard", "ok"); }
-    catch(e){ ta.focus(); ta.select(); flash("Select-all done — press copy on your keyboard", ""); }
+    catch(e){ ta.focus(); ta.select(); flash("Selected. Press copy on your keyboard", ""); }
   });
 
   document.getElementById("shareLink").addEventListener("click", copyShareLink);
