@@ -20,7 +20,6 @@ img{max-width:100%}
 </head>
 <body>
 <title>Pocket Groovebox MF-1</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 /* Layout: a hardware panel — transport header, pattern bank, 8 track rows of 16 LED steps,
@@ -341,7 +340,10 @@ button,.st,.cell,.bank,.slot,input[type=range]{touch-action:manipulation}
 
 <script>
 "use strict";
-/* ======================= model ======================= */
+/* ---------- config.js ---------- */
+/* Static description of the machine: its voices, banks, scales and the
+   parameter ranges the editor renders. Data only, no behaviour. */
+
 const TRACKS = [
   {id:"kick", name:"Kick",   type:"drum",  hue:12},
   {id:"snare",name:"Snare",  type:"drum",  hue:38},
@@ -415,6 +417,9 @@ const PARAMS = {
   ]
 };
 
+/* ---------- patterns.js ---------- */
+/* Empty patterns, a fresh machine, and the song the page opens on. */
+
 function emptyPattern(){
   const p = {};
   for (const t of TRACKS) p[t.id] = t.type==="drum" ? new Array(16).fill(0) : new Array(16).fill(null);
@@ -431,59 +436,212 @@ function freshState(){
   for (const t of TRACKS) s.tracks[t.id] = Object.assign({mute:false}, DEF_PARAMS[t.id]);
   return s;
 }
-/* The page opens on this. Four bars in C minor from three patterns: the pad
-   holds two notes while the bass walks C - Ab - F - C beneath it, so two held
-   notes spell four chords. A states the phrase, B answers it, A states it
-   again, D answers and closes with Eb - D - C landing on the tonic.
-   A is chained twice rather than copied, so editing it changes both bars. */
-const DEFAULT_SONG = {
-  bpm:112, swing:0.55, swingRes:8, dlyTime:3, key:0, scale:"Natural minor",
-  mode:"song", cur:"A", follow:true, song:"A B A D",
-  pat:{
-    A:{kick:"x...x...x...x...", chat:"..x...X...x...x.",
-       bass:"C3 - - - - - C3 - Ab2 - - - F2 - C2 -",
-       lead:"- - G4 - - - Ab4 - - - G4 - - - Bb4 -",
-       pad :"Eb3+G3 - - - - - - - - - - - - - - -"},
-    B:{kick:"x...x...x...x...", chat:"..x...X...x.....", ohat:"..............x.",
-       bass:"C3 - - - - - C3 - Ab2 - - F2 - - Eb3 -",
-       lead:"- - G4 - - - Ab4 - - - Bb4 - G4 - - -",
-       pad :"Eb3+Ab3 - - - - - - - F3! - - - - - - -"},
-    D:{kick:"x...x...x...x...", chat:"..x...X...x.....", ohat:"..............x.",
-       bass:"C3 - - - - - C3 - Ab2 - - F2 - - Eb3 -",
-       lead:"- - G4 - - - Ab4 - - - Eb4 - D4 - C4 -",
-       pad :"Eb3+Ab3 - - - - - - - F3! - - - - - - -"}
-  },
-  trk:{
-    chat:{decay:0.12, snap:0.61, level:0.75, dly:0.19},
-    ohat:{decay:0.77},
-    bass:{oct:-1, detune:4, cutoff:1220, res:7.5, level:0.85},
-    lead:{res:4.1, gate:1.9, dly:0, rev:0.29},
-    pad :{rel:1.3, gate:4}
-  }
-};
-
-let state = freshState();
-let clipboard = null, undoSnap = null;
+/* DEFAULT_SONG is generated into the bundle from songs/default.json, which is
+   the single source for the song the page opens on. See build.py. */
 
 /* ======================= notes ======================= */
-function midiToName(m){ return PC[((m%12)+12)%12] + (Math.floor(m/12)-1); }
+/* The key's root note sitting in this voice's own register. */
+
+/* ======================= audio ======================= */
+
+/* ---------- songs/default.json (generated) ---------- */
+const DEFAULT_SONG = {
+ "v": 1,
+ "bpm": 112,
+ "swing": 0.55,
+ "swingRes": 8,
+ "dlyTime": 3,
+ "key": 0,
+ "scale": "Natural minor",
+ "mode": "song",
+ "cur": "A",
+ "follow": true,
+ "song": "A B A D",
+ "pat": {
+  "A": {
+   "kick": "x...x...x...x...",
+   "chat": "..x...X...x...x.",
+   "bass": "C3 - - - - - C3 - Ab2 - - - F2 - C2 -",
+   "lead": "- - G4 - - - Ab4 - - - G4 - - - Bb4 -",
+   "pad": "Eb3+G3 - - - - - - - - - - - - - - -"
+  },
+  "B": {
+   "kick": "x...x...x...x...",
+   "chat": "..x...X...x.....",
+   "ohat": "..............x.",
+   "bass": "C3 - - - - - C3 - Ab2 - - F2 - - Eb3 -",
+   "lead": "- - G4 - - - Ab4 - - - Bb4 - G4 - - -",
+   "pad": "Eb3+Ab3 - - - - - - - F3! - - - - - - -"
+  },
+  "D": {
+   "kick": "x...x...x...x...",
+   "chat": "..x...X...x.....",
+   "ohat": "..............x.",
+   "bass": "C3 - - - - - C3 - Ab2 - - F2 - - Eb3 -",
+   "lead": "- - G4 - - - Ab4 - - - Eb4 - D4 - C4 -",
+   "pad": "Eb3+Ab3 - - - - - - - F3! - - - - - - -"
+  }
+ },
+ "trk": {
+  "chat": {
+   "decay": 0.12,
+   "snap": 0.61,
+   "level": 0.75,
+   "dly": 0.19
+  },
+  "ohat": {
+   "decay": 0.77
+  },
+  "bass": {
+   "oct": -1,
+   "detune": 4,
+   "cutoff": 1220,
+   "res": 7.5,
+   "level": 0.85
+  },
+  "lead": {
+   "res": 4.1,
+   "gate": 3.5,
+   "dly": 0,
+   "rev": 0.29
+  },
+  "pad": {
+   "rel": 1.3,
+   "gate": 4
+  }
+ }
+};
+
+/* ---------- notes.js ---------- */
+/* Pitch maths. Nothing here reads the live machine: key and scale are passed
+   in, so each function is a plain mapping that can be tested on its own. */
+
+/** MIDI note number to frequency in hertz (A4 = 69 = 440 Hz). */
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+
+/** 60 -> "C4". Flats throughout, which is how minor keys are usually written. */
+function midiToName(m){
+  return PC[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+}
+
+/** "Eb3" | "D#3" | "c2" -> MIDI number, or null if it is not a note name. */
 function nameToMidi(s){
   const m = /^([A-Ga-g])([#b]?)(-?\d+)$/.exec(String(s).trim());
   if(!m) return null;
-  const base = {c:0,d:2,e:4,f:5,g:7,a:9,b:11}[m[1].toLowerCase()];
-  const acc  = m[2]==="#" ? 1 : m[2]==="b" ? -1 : 0;
-  const n = 12*(parseInt(m[3],10)+1) + base + acc;
-  return (n>=0 && n<=127) ? n : null;
-}
-const inScale = m => SCALES[state.scale].includes((((m - state.key) % 12) + 12) % 12);
-const isRoot  = m => ((((m - state.key) % 12) + 12) % 12) === 0;
-/* The key's root note sitting in this voice's own register. */
-function rootFor(id){
-  const c = TBY[id].center || 60;
-  return c - ((((c - state.key) % 12) + 12) % 12);
+  const base = {c:0, d:2, e:4, f:5, g:7, a:9, b:11}[m[1].toLowerCase()];
+  const acc  = m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0;
+  const n = 12 * (parseInt(m[3], 10) + 1) + base + acc;
+  return (n >= 0 && n <= 127) ? n : null;
 }
 
-/* ======================= audio ======================= */
+/** Semitones above the key's root, 0-11. */
+function degree(midi, key){
+  return (((midi - key) % 12) + 12) % 12;
+}
+
+/** Is this note one of the scale's seven (or five, or twelve)? */
+function isInScale(midi, key, scaleName){
+  const intervals = SCALES[scaleName];
+  return intervals ? intervals.includes(degree(midi, key)) : true;
+}
+
+/** Is this note the key's root, in any octave? */
+function isKeyRoot(midi, key){
+  return degree(midi, key) === 0;
+}
+
+/** The key's root note sitting at or just below a voice's own register. */
+function rootNear(center, key){
+  return center - degree(center, key);
+}
+
+/* ---------- timing.js ---------- */
+/* Pure timing maths. Everything here takes the tempo and feel explicitly so it
+   can be reasoned about, and tested, without a running machine. */
+
+/** Length of one sixteenth note, in seconds. */
+const sixteenthSeconds = bpm => 60 / bpm / 4;
+
+/**
+ * How far a step is pushed late by swing, in seconds.
+ * On the 1/8 grid every second eighth moves (steps 3, 7, 11, 15 of a bar);
+ * on the 1/16 grid every second sixteenth does. A pattern written entirely in
+ * eighth notes therefore does not swing on the 1/16 grid — all of its notes are
+ * the first of their pair.
+ * @param {number} step 1-based step within the bar
+ */
+function swingShiftSeconds(step, swing, swingRes, bpm){
+  if(swing <= 0.5) return 0;
+  const s16 = sixteenthSeconds(bpm);
+  if(swingRes === 8) return ((step - 1) % 4 === 2) ? (swing - 0.5) * 4 * s16 : 0;
+  return ((step - 1) % 2 === 1) ? (swing - 0.5) * 2 * s16 : 0;
+}
+
+/** The same shift in whole milliseconds, for display. */
+function swingMilliseconds(swing, swingRes, bpm){
+  const span = swingRes === 8 ? 4 : 2;
+  return Math.round((swing - 0.5) * span * sixteenthSeconds(bpm) * 1000);
+}
+
+/* ---------- codec.js ---------- */
+/* The pattern-code format. A drum row is 16 characters: "." rest, "x" hit,
+   "X" accent. A synth row is 16 whitespace-separated tokens: a note name,
+   "-" rest, "+" to stack notes into a chord, "!" for an accent. */
+
+function trackToStr(type, arr){
+  if(type === "drum") return arr.map(v => v===2 ? "X" : v===1 ? "x" : ".").join("");
+  return arr.map(c => (!c || !c.length) ? "-" :
+    c.slice().sort((a,b)=>a.n-b.n).map(n => midiToName(n.n) + (n.v>=0.98 ? "!" : "")).join("+")).join(" ");
+}
+function strToTrack(type, s){
+  if(type === "drum"){
+    const chars = String(s).replace(/[^.xX_\-]/g, "").split("");
+    const out = new Array(16).fill(0);
+    for(let i=0;i<16;i++){ const c = chars[i]; out[i] = c==="X" ? 2 : c==="x" ? 1 : 0; }
+    return out;
+  }
+  const toks = String(s).trim().split(/\s+/);
+  const out = new Array(16).fill(null);
+  for(let i=0;i<16;i++){
+    const t = toks[i];
+    if(!t || t==="-" || t===".") continue;
+    const notes = t.split("+").map(x=>{
+      const acc = x.endsWith("!");
+      const m = nameToMidi(acc ? x.slice(0,-1) : x);
+      return m==null ? null : {n:m, v:acc ? 1.0 : 0.85};
+    }).filter(Boolean);
+    out[i] = notes.length ? notes : null;
+  }
+  return out;
+}
+
+/* ---------- runtime.js ---------- */
+/* The live machine. One mutable object the UI renders from and the transport
+   reads; every module below touches it, which is why it sits on its own. */
+let state = freshState();
+let clipboard = null, undoSnap = null;
+const setState = v => { state = v; };
+const setClipboard = v => { clipboard = v; };
+const setUndo = v => { undoSnap = v; };
+
+/* ---------- bindings.js ---------- */
+/* Adapters. The pure modules take tempo, key and scale as arguments so they can
+   be reasoned about and tested on their own; the rest of the app asks about the
+   machine as it currently is. Binding them in one place keeps the pure core
+   pure without threading state through several hundred call sites. */
+
+const sixteenth  = () => sixteenthSeconds(state.bpm);
+const swingShift = i  => swingShiftSeconds(i + 1, state.swing, state.swingRes, state.bpm);
+const swingMs    = () => swingMilliseconds(state.swing, state.swingRes, state.bpm);
+
+const inScale = m  => isInScale(m, state.key, state.scale);
+const isRoot  = m  => isKeyRoot(m, state.key);
+const rootFor = id => rootNear((TBY[id] && TBY[id].center) || 60, state.key);
+
+/* ---------- engine.js ---------- */
+/* The audio graph: master chain, per-track buses with delay and reverb sends,
+   a generated impulse response, and the envelope helpers every voice uses. */
+
 let ctx=null, master, revIn, dlyIn, dlyNode, dlyFb, dlyLp, noiseBuf, bus={}, openHat=null;
 const liveVoices = new Map();
 
@@ -552,19 +710,8 @@ function setDelayTime(){
   const sixteenth = 60/state.bpm/4;
   dlyNode.delayTime.setTargetAtTime(Math.min(1.9, sixteenth*state.dlyTime), ctx.currentTime, 0.05);
 }
-const sixteenth = ()=>60/state.bpm/4;
 /* How far the swung step is pushed late, in seconds. On the 1/8 grid every second
    eighth moves (steps 3, 7, 11, 15); on the 1/16 grid every second sixteenth does. */
-function swingShift(i){
-  if(state.swing <= 0.5) return 0;
-  if(state.swingRes === 8) return (i % 4 === 2) ? (state.swing-0.5)*4*sixteenth() : 0;
-  return (i % 2 === 1) ? (state.swing-0.5)*2*sixteenth() : 0;
-}
-function swingMs(){
-  const span = state.swingRes === 8 ? 4 : 2;
-  return Math.round((state.swing-0.5)*span*sixteenth()*1000);
-}
-const mtof = m => 440*Math.pow(2,(m-69)/12);
 
 function noiseSrc(t, dur){
   const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
@@ -598,6 +745,9 @@ function env(g, t, peak, dec, atk){
   g.gain.linearRampToValueAtTime(Math.max(0.0002,peak), t+(atk||0.002));
   g.gain.exponentialRampToValueAtTime(0.0001, t+(atk||0.002)+dec);
 }
+
+/* ---------- drums.js ---------- */
+/* The five drum voices, synthesised from oscillators and filtered noise. */
 
 function playDrum(id, t, vel){
   if(!ctx) return;
@@ -649,6 +799,10 @@ function playDrum(id, t, vel){
     });
   }
 }
+
+/* ---------- synth.js ---------- */
+/* The three synth voices, and the screen wake lock that keeps a tablet from
+   dimming mid-loop. */
 
 function voiceOn(id, note, t, vel){
   if(!ctx) return null;
@@ -711,6 +865,12 @@ document.addEventListener("visibilitychange", ()=>{
 });
 
 /* ======================= transport ======================= */
+
+/* ---------- transport.js ---------- */
+/* The clock. Steps are scheduled ahead of time against the audio clock, and
+   the playhead is driven from a queue so the display follows what is audible
+   rather than what has merely been queued. */
+
 let playing=false, stepIdx=0, nextTime=0, slotIdx=0, playPat="E", timer=null;
 const uiQueue = [];
 
@@ -822,6 +982,10 @@ function setPos(pat, i){
 
 /* ======================= editing ======================= */
 /* The whole machine, so Undo also covers voice settings and a loaded file. */
+
+/* ---------- editing.js ---------- */
+/* Placing, cycling and clearing steps and notes, and the one-step undo. */
+
 function snapshot(){ try{ undoSnap = dumpCode(); }catch(e){ undoSnap = null; } }
 function doUndo(){
   if(!undoSnap) return flash("Nothing to undo", "err");
@@ -883,6 +1047,11 @@ function rollClick(id, i, note, additive){
 }
 
 /* ======================= render ======================= */
+
+/* ---------- render.js ---------- */
+/* Every render and paint function. build* creates DOM once; paint* updates
+   classes on DOM that already exists. */
+
 function renderBanks(){
   const host = document.getElementById("banks");
   if(host.children.length !== BANKS.length){
@@ -1123,32 +1292,10 @@ function paintAll(){
 }
 
 /* ======================= code in / out ======================= */
-function trackToStr(type, arr){
-  if(type === "drum") return arr.map(v => v===2 ? "X" : v===1 ? "x" : ".").join("");
-  return arr.map(c => (!c || !c.length) ? "-" :
-    c.slice().sort((a,b)=>a.n-b.n).map(n => midiToName(n.n) + (n.v>=0.98 ? "!" : "")).join("+")).join(" ");
-}
-function strToTrack(type, s){
-  if(type === "drum"){
-    const chars = String(s).replace(/[^.xX_\-]/g, "").split("");
-    const out = new Array(16).fill(0);
-    for(let i=0;i<16;i++){ const c = chars[i]; out[i] = c==="X" ? 2 : c==="x" ? 1 : 0; }
-    return out;
-  }
-  const toks = String(s).trim().split(/\s+/);
-  const out = new Array(16).fill(null);
-  for(let i=0;i<16;i++){
-    const t = toks[i];
-    if(!t || t==="-" || t===".") continue;
-    const notes = t.split("+").map(x=>{
-      const acc = x.endsWith("!");
-      const m = nameToMidi(acc ? x.slice(0,-1) : x);
-      return m==null ? null : {n:m, v:acc ? 1.0 : 0.85};
-    }).filter(Boolean);
-    out[i] = notes.length ? notes : null;
-  }
-  return out;
-}
+
+/* ---------- serialize.js ---------- */
+/* Reading and writing the whole machine as a pattern code. */
+
 function dumpCode(){
   const o = {v:1, bpm:state.bpm, swing:+state.swing.toFixed(2), swingRes:state.swingRes, dlyTime:state.dlyTime, key:state.key, scale:state.scale,
              mode:state.mode, cur:state.cur, follow:state.follow,
@@ -1215,6 +1362,11 @@ function loadCode(txt){
    Two layers. localStorage is the instant, per-browser safety net so a
    refresh never loses work. The db capability holds the autosave and the
    named save slots, so they survive across devices and sessions. */
+
+/* ---------- storage.js ---------- */
+/* Where a song lives: a rolling autosave plus named save slots, backed by the
+   artifact's document store when there is one and this browser otherwise. */
+
 const LS_KEY = "mf1.autosave.v1";
 let dbRef = null, lastCode = null, dbTimer = null, writing = false, pendingCode = null;
 
@@ -1418,6 +1570,11 @@ async function initStorage(){
    A whole song is about 790 bytes of JSON, ~335 deflated, ~450 characters once
    base64url'd — small enough to carry in a link. "s=" is compressed, "j=" is
    plain, for browsers without CompressionStream. */
+
+/* ---------- share.js ---------- */
+/* Carrying a song elsewhere: a link with the song in its hash, and plain JSON
+   files in and out. */
+
 const B64U = {
   enc(bytes){
     let s = "";
@@ -1535,6 +1692,10 @@ function flash(text, kind){
 }
 
 /* ======================= wiring ======================= */
+
+/* ---------- main.js ---------- */
+/* Wiring and boot. */
+
 function wire(){
   document.getElementById("play").addEventListener("click", ()=>{ playing ? stopTransport() : startTransport(); });
   document.getElementById("stop").addEventListener("click", stopTransport);
@@ -1707,6 +1868,5 @@ try{
   } else boot(null);
 }catch(e){ boot(null); }
 </script>
-
 </body>
 </html>

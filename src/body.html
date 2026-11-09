@@ -1,0 +1,136 @@
+<div class="shell">
+
+<header class="panel hdr">
+  <div class="brand">
+    <span class="mark">MF-1</span>
+    <div style="min-width:0">
+      <h1>Pocket Groovebox</h1>
+      <p class="sub">8 voices · 16 steps · 8 patterns</p>
+    </div>
+  </div>
+  <div class="transport">
+    <button class="btn play" id="play">▶ Play</button>
+    <button class="btn" id="stop">■ Stop</button>
+    <div class="readout" id="pos">— · —</div>
+    <div class="seg" role="group" aria-label="Play mode">
+      <button class="btn" data-mode="pattern">Pattern</button>
+      <button class="btn" data-mode="song">Song</button>
+    </div>
+  </div>
+  <div class="globals">
+    <div class="ctl" style="flex:1 1 150px">
+      <span class="lbl">Tempo <span class="val" id="vBpm"></span></span>
+      <input type="range" id="bpm" min="60" max="180" step="1">
+    </div>
+    <div class="ctl" style="flex:1 1 185px">
+      <span class="lbl">Swing <span class="val" id="vSwing"></span></span>
+      <input type="range" id="swing" min="50" max="75" step="1">
+    </div>
+    <div class="ctl">
+      <span class="lbl">Swing grid</span>
+      <select id="swingRes">
+        <option value="8">1/8 notes</option>
+        <option value="16">1/16 notes</option>
+      </select>
+    </div>
+    <div class="ctl" style="flex:1 1 150px">
+      <span class="lbl">Volume <span class="val" id="vMaster"></span></span>
+      <input type="range" id="master" min="0" max="100" step="1">
+    </div>
+    <div class="ctl">
+      <span class="lbl">Delay time</span>
+      <select id="dlyTime">
+        <option value="1">1/16</option>
+        <option value="2">1/8</option>
+        <option value="3">dotted 1/8</option>
+        <option value="4">1/4</option>
+        <option value="6">dotted 1/4</option>
+        <option value="8">1/2</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <span class="lbl">Key</span>
+      <select id="key"></select>
+    </div>
+    <div class="ctl">
+      <span class="lbl">Scale</span>
+      <select id="scale"></select>
+    </div>
+    <p class="hint" style="flex-basis:100%;margin:0">Key and scale light up the matching notes on a synth voice&rsquo;s piano roll, so select Bass, Lead or Pad to see them take effect. They guide what you play next; they do not transpose what is already there.</p>
+  </div>
+</header>
+
+<section class="panel banks">
+  <span class="lbl">Pattern</span>
+  <div class="bankrow" id="banks"></div>
+  <button class="btn" id="follow" title="In song mode, show whichever pattern is playing">Follow</button>
+  <div class="utils">
+    <button class="btn" id="clrTrack">Clear track</button>
+    <button class="btn" id="clrPat">Clear pattern</button>
+    <button class="btn" id="clrAll">Clear all</button>
+    <button class="btn" id="copyPat">Copy</button>
+    <button class="btn" id="pastePat">Paste</button>
+    <button class="btn" id="loadDemo">Load demo</button>
+    <button class="btn" id="undo">Undo</button>
+  </div>
+</section>
+
+<section class="panel seq" id="seq"></section>
+
+<section class="panel editor" id="editor">
+  <div class="edhead"><h2 id="edName">—</h2><div id="edExtra"></div></div>
+  <p class="hint" id="edHint"></p>
+  <div class="rollwrap" id="rollwrap" hidden><div class="roll" id="roll"></div></div>
+  <div class="params" id="params"></div>
+</section>
+
+<section class="panel">
+  <span class="lbl">Song — chain patterns into an arrangement</span>
+  <div class="slots" id="slots"></div>
+</section>
+
+<details class="panel help">
+  <summary>How to drive it</summary>
+  <dl>
+    <dt>Click a step</dt><dd>Drum tracks cycle off → on → accent (brighter) → off.</dd>
+    <dt>Click a track name</dt><dd>Selects it, so the editor below shows its notes and voice controls.</dd>
+    <dt>Piano roll</dt><dd>Click a cell to set the note for that step. Shift-click adds a second note in the same step, making a chord. Click a lit cell to remove it. Click a note name on the left to hear it.</dd>
+    <dt>Keyboard</dt><dd><b>Space</b> plays and stops. <b>A W S E D F T G Y H U J K</b> plays the selected synth voice like one octave of a piano (A = C).</dd>
+    <dt>Accent</dt><dd>On the piano roll, shift-click an already-lit note to toggle its accent.</dd>
+    <dt>Mute</dt><dd>The small <b>M</b> next to a track name.</dd>
+    <dt>Key and scale</dt><dd>They shade the piano roll — bright for notes in the scale, dim for notes outside it, blue for the root — and set which note a step starts on. They change nothing you have already placed, and have no visible effect while a drum track is selected.</dd>
+    <dt>Clear all / Load demo</dt><dd>Clear all empties every pattern and the song chain. Load demo puts the original four-bar song back. Both replace everything, and Undo reverses either one.</dd>
+    <dt>Follow</dt><dd>In song mode, keeps the step grid on whichever pattern is playing. Clicking a pattern by hand switches it off so your edits stay put.</dd>
+    <dt>Saving</dt><dd>Everything autosaves as you work, so a refresh picks up where you left off. Use <b>Saved songs</b> to keep more than one under a name.</dd>
+  </dl>
+  <h3>Pattern code</h3>
+  <p class="hint" style="max-width:70ch">The box below writes the whole machine out as text you can copy, keep, or paste back. Drum rows read <span class="rk" style="font-size:12px">.</span> for a rest, <b>x</b> for a hit and <b>X</b> for an accent. Synth rows are sixteen note names, <b>-</b> for a rest, <b>+</b> to stack notes into a chord and <b>!</b> for an accent. A pasted code only changes what it mentions, so a code containing just one drum row replaces only that row.</p>
+</details>
+
+<section class="panel" id="savesPanel">
+  <span class="lbl">Saved songs</span>
+  <p class="hint" id="saveState">Checking storage&hellip;</p>
+  <div class="coderow" id="saveRow" hidden>
+    <input type="text" id="saveName" placeholder="Name this song" maxlength="40" aria-label="Song name">
+    <button class="btn" id="saveBtn">Save</button>
+    <span class="msg" id="saveMsg"></span>
+  </div>
+  <div class="savelist" id="saveList"></div>
+</section>
+
+<section class="panel">
+  <span class="lbl">Pattern code</span>
+  <textarea class="codearea" id="code" spellcheck="false" aria-label="Pattern code"></textarea>
+  <div class="coderow">
+    <button class="btn" id="dump">Write current</button>
+    <button class="btn" id="load">Load code</button>
+    <button class="btn" id="copyCode">Copy</button>
+    <button class="btn" id="shareLink">Copy link</button>
+    <button class="btn" id="dlSong">Download</button>
+    <button class="btn" id="openSong">Open file</button>
+    <input type="file" id="songFile" accept="application/json,.json" hidden>
+    <span class="msg" id="msg"></span>
+  </div>
+</section>
+
+</div>

@@ -18,18 +18,50 @@ click, as browsers require.
 
 ## Layout
 
+Everything under `src/` is source; `groovebox.html` and `index.html` are built
+from it by `build.py` and committed so the site can be served directly.
+
 | Path | |
 | --- | --- |
-| `groovebox.html` | the canonical source — markup, styles and script in one file |
-| `index.html` | generated standalone page; run `python3 build.py` after editing the source |
-| `build.py` | wraps the source in a document skeleton |
-| `songs/default.json` | the four-bar song the page opens on, in the pattern-code format below |
-| `make_icon.py` | regenerates `icon.png`, the home-screen icon |
-| `manifest.webmanifest` | web app manifest, for installing to a home screen |
+| `src/head.html` | title and web font |
+| `src/body.html` | the markup |
+| `src/styles.css` | the stylesheet |
+| `src/js/*.js` | the application, one concern per file |
+| `songs/default.json` | the song the page opens on — the only place it is defined |
+| `tests/*.test.js` | tests for the pure modules |
+| `build.py` | assembles the two pages |
+| `make_icon.py` | regenerates `icon.png` |
+| `index.html` | **generated** — the standalone page |
+| `groovebox.html` | **generated** — the Claude Artifact source |
 
-`groovebox.html` deliberately has no `<html>`/`<head>`: it is also published as a
-Claude Artifact, where the platform supplies those. `build.py` adds them so the
-same page works as a plain file.
+```
+npm test        # 33 tests, no dependencies
+npm run build   # regenerate index.html and groovebox.html
+```
+
+## Architecture
+
+`build.py` concatenates `src/js/*.js` in a declared order into one classic
+script, so the modules share a scope and that order is what resolves them. The
+order, with what each file owns, is the `LOAD_ORDER` list in `build.py`.
+
+The files at the top of that order — `notes.js`, `timing.js`, `codec.js` and the
+data in `config.js` and `patterns.js` — are also written as real ES modules with
+imports and exports, so `node --test` can load them directly. They take tempo,
+key and scale as arguments rather than reading the live machine, which is what
+makes them testable; `bindings.js` binds them to the current state in one place
+so the rest of the app can keep asking about the machine as it is. The build
+strips the module syntax on the way in.
+
+That split is deliberate: the logic worth testing is pure and tested, and the
+code that can only be judged with a browser and a pair of ears is not pretending
+otherwise. Pitch spelling, note parsing, scale membership, swing offsets and the
+pattern-code format are all covered, including a round-trip over every row of
+the shipped song.
+
+`groovebox.html` carries no `<html>` or `<head>`: the Artifact platform supplies
+those. `build.py` adds them for `index.html`, along with the home-screen
+metadata, which only applies to the hosted copy.
 
 ## On a tablet
 

@@ -1,0 +1,12 @@
+{
+  "name": "pocket-groovebox",
+  "version": "1.0.0",
+  "description": "An eight-voice groovebox with a 16-step sequencer, in one page.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "python3 build.py",
+    "test": "node --test"
+  }
+}
