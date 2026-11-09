@@ -1313,11 +1313,13 @@ async function decodeShare(frag){
   ).arrayBuffer();
   return new TextDecoder().decode(buf);
 }
+let ownFragment = null;   /* so our own Copy link does not look like an arriving one */
 async function copyShareLink(){
   let url;
   try{
     const frag = await encodeShare(dumpCode());
     url = location.origin + location.pathname + location.search + "#" + frag;
+    ownFragment = frag;
     try{ location.hash = frag; }catch(e){}
   }catch(e){ return flash("Could not build a link", "err"); }
   try{
@@ -1378,6 +1380,10 @@ async function applyHash(){
     paintAll();
     document.getElementById("code").value = dumpCode();
     flash("Loaded from the link — Undo restores what you had", "ok");
+    /* The hash is a delivery mechanism, not state: once the song is in, drop it
+       so a later reload resumes this browser's autosave instead of re-importing
+       over whatever the visitor has since changed. Copy link rebuilds it. */
+    try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
   }catch(e){ flash("That link's song could not be read", "err"); }
 }
 
@@ -1461,6 +1467,13 @@ function wire(){
   });
 
   document.getElementById("shareLink").addEventListener("click", copyShareLink);
+  /* A link pasted into an already-open tab is a same-document navigation, so
+     boot never runs again — pick it up here instead. */
+  addEventListener("hashchange", ()=>{
+    const frag = (location.hash || "").replace(/^#/, "");
+    if(frag && frag === ownFragment) return;
+    applyHash();
+  });
   document.getElementById("dlSong").addEventListener("click", downloadSong);
   const fileIn = document.getElementById("songFile");
   document.getElementById("openSong").addEventListener("click", ()=>fileIn.click());
