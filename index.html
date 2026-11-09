@@ -287,6 +287,10 @@ details.help[open] summary{margin-bottom:10px;color:var(--ink)}
     <button class="btn" id="dump">Write current</button>
     <button class="btn" id="load">Load code</button>
     <button class="btn" id="copyCode">Copy</button>
+    <button class="btn" id="shareLink">Copy link</button>
+    <button class="btn" id="dlSong">Download</button>
+    <button class="btn" id="openSong">Open file</button>
+    <input type="file" id="songFile" accept="application/json,.json" hidden>
     <span class="msg" id="msg"></span>
   </div>
 </section>
@@ -385,22 +389,28 @@ function freshState(){
   for (const t of TRACKS) s.tracks[t.id] = Object.assign({mute:false}, DEF_PARAMS[t.id]);
   return s;
 }
-const DEMO = {
-  E:{kick:"x...x...x...x...", clap:"....x.......x...", chat:"..x...x...x...x.", ohat:"...............x",
-     bass:"C2 - - - C2 - - - Eb2 - C2 - G1 - - -",
-     pad :"C3+Eb3+G3 - - - - - - - - - - - - - - -"},
-  F:{kick:"x...x...x...x...", clap:"....x.......x...", chat:"..x...x...x...x.",
-     bass:"C2 - - - C2 - - - Eb2 - C2 - Bb1 - - -",
-     pad :"C3+Eb3+G3 - - - - - - - - - - - - - - -",
-     lead:"- - - - - - - - G3 - Bb3 - C4 - - -"},
-  G:{kick:"x...x...x...x...", clap:"....x.......x...", chat:"..x...x...x...x.", snare:"..............x.", ohat:"...............x",
-     bass:"Ab1 - - - Ab1 - - - C2 - Ab1 - Eb2 - - -",
-     pad :"Ab2+C3+Eb3 - - - - - - - - - - - - - - -",
-     lead:"Eb4 - C4 - - - Ab3 - - - - - G3 - - -"},
-  H:{kick:"x...x...x...x...", clap:"....x.......X...", chat:"..x...x...x...x.", ohat:"..........x....x",
-     bass:"Bb1 - - - Bb1 - - - D2 - Bb1 - F2 - - -",
-     pad :"Bb2+D3+F3 - - - - - - - - - - - - - - -",
-     lead:"F3 - - - G3 - - - Bb3 - - - - - - -"}
+/* The page opens on this. Two bars in C minor: the pad holds Eb+G while the
+   bass walks C - Ab - F - C beneath it, so two held notes spell four chords. */
+const DEFAULT_SONG = {
+  bpm:112, swing:0.55, swingRes:8, dlyTime:3, key:0, scale:"Natural minor",
+  mode:"song", cur:"A", song:"A B",
+  pat:{
+    A:{kick:"x...x...x...x...", chat:"..x...X...x...x.",
+       bass:"C3 - - - - - C3 - Ab2 - - - F2 - C2 -",
+       lead:"- - G4 - - - Ab4 - - - G4 - - - Bb4 -",
+       pad :"Eb3+G3 - - - - - - - - - - - - - - -"},
+    B:{kick:"x...x...x...x...", chat:"..x...X...x.....", ohat:"..............x.",
+       bass:"C3 - - - - - C3 - Ab2 - - F2 - - Eb3 -",
+       lead:"- - G4 - - - Ab4 - - - Bb4 - G4 - - -",
+       pad :"Eb3+Ab3 - - - - - - - F3! - - - - - - -"}
+  },
+  trk:{
+    chat:{decay:0.12, snap:0.61, level:0.75, dly:0.19},
+    ohat:{decay:0.77},
+    bass:{oct:-1, detune:4, cutoff:1220, res:7.5, level:0.85},
+    lead:{res:4.1, gate:1.9, dly:0, rev:0.29},
+    pad :{rel:1.3, gate:4}
+  }
 };
 
 let state = freshState();
@@ -736,12 +746,18 @@ function setPos(pat, i){
 }
 
 /* ======================= editing ======================= */
-function snapshot(){ undoSnap = JSON.stringify({patterns:state.patterns, song:state.song}); }
+/* The whole machine, so Undo also covers voice settings and a loaded file. */
+function snapshot(){ try{ undoSnap = dumpCode(); }catch(e){ undoSnap = null; } }
 function doUndo(){
   if(!undoSnap) return flash("Nothing to undo", "err");
-  const o = JSON.parse(undoSnap);
-  state.patterns = o.patterns; state.song = o.song;
-  undoSnap = null; paintAll(); flash("Undone", "ok");
+  const code = undoSnap; undoSnap = null;
+  try{
+    state = freshState();
+    loadCode(code);
+    paintAll();
+    document.getElementById("code").value = dumpCode();
+    flash("Undone", "ok");
+  }catch(e){ flash("Could not undo", "err"); }
 }
 function curPat(){ return state.patterns[state.cur]; }
 function auditionNote(id, note, vel){
@@ -1271,6 +1287,113 @@ async function initStorage(){
   }catch(e){ /* nothing newer to offer */ }
 }
 
+/* ======================= share link, files =======================
+   A whole song is about 790 bytes of JSON, ~335 deflated, ~450 characters once
+   base64url'd — small enough to carry in a link. "s=" is compressed, "j=" is
+   plain, for browsers without CompressionStream. */
+const B64U = {
+  enc(bytes){
+    let s = "";
+    for(let i=0;i<bytes.length;i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  },
+  dec(str){
+    const bin = atob(str.replace(/-/g,"+").replace(/_/g,"/"));
+    const out = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+};
+async function encodeShare(json){
+  if(typeof CompressionStream === "function"){
+    try{
+      const buf = await new Response(
+        new Blob([json]).stream().pipeThrough(new CompressionStream("deflate-raw"))
+      ).arrayBuffer();
+      return "s=" + B64U.enc(new Uint8Array(buf));
+    }catch(e){ /* fall through to the uncompressed form */ }
+  }
+  return "j=" + B64U.enc(new TextEncoder().encode(json));
+}
+async function decodeShare(frag){
+  const m = /^#?([sj])=([A-Za-z0-9\-_]+)$/.exec(frag || "");
+  if(!m) return null;
+  const bytes = B64U.dec(m[2]);
+  if(m[1] === "j") return new TextDecoder().decode(bytes);
+  if(typeof DecompressionStream !== "function") return null;
+  const buf = await new Response(
+    new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))
+  ).arrayBuffer();
+  return new TextDecoder().decode(buf);
+}
+async function copyShareLink(){
+  let url;
+  try{
+    const frag = await encodeShare(dumpCode());
+    url = location.origin + location.pathname + location.search + "#" + frag;
+    try{ location.hash = frag; }catch(e){}
+  }catch(e){ return flash("Could not build a link", "err"); }
+  try{
+    await navigator.clipboard.writeText(url);
+    flash("Link copied — " + url.length + " characters", "ok");
+  }catch(e){
+    const ta = document.getElementById("code");
+    ta.value = url; ta.focus(); ta.select();
+    flash("Link is in the box below, ready to copy", "");
+  }
+}
+function songFilename(){
+  const typed = (document.getElementById("saveName").value || "").trim();
+  return ((typed || "groovebox-song").replace(/[^\w.-]+/g,"-").replace(/^-+|-+$/g,"").slice(0,48)
+          || "groovebox-song") + ".json";
+}
+async function downloadSong(){
+  const name = songFilename(), json = dumpCode();
+  try{
+    const dl = (window.claude && window.claude.use) ? await window.claude.use("downloads") : null;
+    if(dl){ await dl.save({filename:name, data:json}); flash("Saved " + name, "ok"); return; }
+  }catch(e){ /* viewer declined or unavailable; try the ordinary link */ }
+  try{
+    const url = URL.createObjectURL(new Blob([json], {type:"application/json"}));
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.style.display = "none";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 2000);
+    flash("Requested " + name + " — if nothing arrived, use Copy instead", "");
+  }catch(e){ flash("Downloads are not available here — use Copy", "err"); }
+}
+function openSongFile(file){
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      snapshot();
+      state = freshState();
+      loadCode(String(r.result));
+      paintAll();
+      document.getElementById("code").value = dumpCode();
+      flash("Loaded " + file.name, "ok");
+    }catch(e){ flash("Could not read that file: " + e.message, "err"); }
+  };
+  r.onerror = ()=>flash("Could not read that file", "err");
+  r.readAsText(file);
+}
+/* A shared link wins over this browser's autosave — that is the point of the
+   link — but the previous state goes into Undo first. */
+async function applyHash(){
+  if(!/^#[sj]=/.test(location.hash || "")) return;
+  try{
+    const json = await decodeShare(location.hash);
+    if(!json) return flash("This browser cannot unpack that link", "err");
+    snapshot();
+    state = freshState();
+    loadCode(json);
+    paintAll();
+    document.getElementById("code").value = dumpCode();
+    flash("Loaded from the link — Undo restores what you had", "ok");
+  }catch(e){ flash("That link's song could not be read", "err"); }
+}
+
 let msgTimer = null;
 function flash(text, kind){
   const el = document.getElementById("msg");
@@ -1350,6 +1473,12 @@ function wire(){
     catch(e){ ta.focus(); ta.select(); flash("Select-all done — press copy on your keyboard", ""); }
   });
 
+  document.getElementById("shareLink").addEventListener("click", copyShareLink);
+  document.getElementById("dlSong").addEventListener("click", downloadSong);
+  const fileIn = document.getElementById("songFile");
+  document.getElementById("openSong").addEventListener("click", ()=>fileIn.click());
+  fileIn.addEventListener("change", ()=>{ openSongFile(fileIn.files && fileIn.files[0]); fileIn.value = ""; });
+
   const KEYMAP = {a:0,w:1,s:2,e:3,d:4,f:5,t:6,g:7,y:8,h:9,u:10,j:11,k:12,o:13,l:14,p:15};
   addEventListener("keydown", ev=>{
     const tag = (ev.target && ev.target.tagName) || "";
@@ -1375,16 +1504,17 @@ function wire(){
 /* ======================= boot ======================= */
 function boot(initial){
   state = freshState();
-  try{ loadCode(JSON.stringify({pat:DEMO})); }catch(e){}
+  try{ loadCode(JSON.stringify(DEFAULT_SONG)); }catch(e){}
   /* A live reload hands its own state back; otherwise pick up where this
      browser left off, so a refresh never costs you the bar you just built. */
   const resume = (initial && initial.code) ? initial.code : (loadLocal() || {}).code;
-  if(resume){ try{ state = freshState(); loadCode(resume); }catch(e){ state = freshState(); try{ loadCode(JSON.stringify({pat:DEMO})); }catch(e2){} } }
+  if(resume){ try{ state = freshState(); loadCode(resume); }catch(e){ state = freshState(); try{ loadCode(JSON.stringify(DEFAULT_SONG)); }catch(e2){} } }
   buildSeq(); wire(); paintAll(); drawLoop();
   document.getElementById("code").value = dumpCode();
   setPos(null);
   startAutosave();
   initStorage();
+  applyHash();
 }
 try{
   if(window.claude && window.claude.hot){

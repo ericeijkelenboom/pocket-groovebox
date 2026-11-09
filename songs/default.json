@@ -1,0 +1,57 @@
+{
+ "v": 1,
+ "bpm": 112,
+ "swing": 0.55,
+ "swingRes": 8,
+ "dlyTime": 3,
+ "key": 0,
+ "scale": "Natural minor",
+ "mode": "song",
+ "cur": "A",
+ "song": "A B",
+ "pat": {
+  "A": {
+   "kick": "x...x...x...x...",
+   "chat": "..x...X...x...x.",
+   "bass": "C3 - - - - - C3 - Ab2 - - - F2 - C2 -",
+   "lead": "- - G4 - - - Ab4 - - - G4 - - - Bb4 -",
+   "pad": "Eb3+G3 - - - - - - - - - - - - - - -"
+  },
+  "B": {
+   "kick": "x...x...x...x...",
+   "chat": "..x...X...x.....",
+   "ohat": "..............x.",
+   "bass": "C3 - - - - - C3 - Ab2 - - F2 - - Eb3 -",
+   "lead": "- - G4 - - - Ab4 - - - Bb4 - G4 - - -",
+   "pad": "Eb3+Ab3 - - - - - - - F3! - - - - - - -"
+  }
+ },
+ "trk": {
+  "chat": {
+   "decay": 0.12,
+   "snap": 0.61,
+   "level": 0.75,
+   "dly": 0.19
+  },
+  "ohat": {
+   "decay": 0.77
+  },
+  "bass": {
+   "oct": -1,
+   "detune": 4,
+   "cutoff": 1220,
+   "res": 7.5,
+   "level": 0.85
+  },
+  "lead": {
+   "res": 4.1,
+   "gate": 1.9,
+   "dly": 0,
+   "rev": 0.29
+  },
+  "pad": {
+   "rel": 1.3,
+   "gate": 4
+  }
+ }
+}

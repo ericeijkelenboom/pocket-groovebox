@@ -20,7 +20,7 @@ as browsers require.
 | `groovebox.html` | the canonical source — markup, styles and script in one file |
 | `index.html` | generated standalone page; run `python3 build.py` after editing the source |
 | `build.py` | wraps the source in a document skeleton |
-| `songs/two-bars.json` | a saved song in the pattern-code format below |
+| `songs/default.json` | the song the page opens on, in the pattern-code format below |
 
 `groovebox.html` deliberately has no `<html>`/`<head>`: it is also published as a
 Claude Artifact, where the platform supplies those. `build.py` adds them so the
@@ -64,11 +64,32 @@ row. That makes codes easy to pass around as diffs.
 
 ## Storage
 
-Work autosaves to `localStorage` on every change. Published as a Claude Artifact
-it also writes to the artifact's document store, which gives named save slots
-that survive across devices. Outside that environment `window.claude` is absent,
-every capability call resolves to nothing, and the page falls back to
-`localStorage` alone.
+There is no backend, so a visitor's work lives in three places, each answering a
+different question.
+
+**Keep my work** — `localStorage`, written on every change and restored on load.
+A song is about 790 bytes, so the ~5 MB quota holds thousands. Scoped to one
+browser on one device and wiped by "clear site data", so it is convenience, not
+backup. Note that `localStorage` is scoped per *origin*, not per path: every
+project published under one `github.io` account shares a bucket, hence the
+`mf1.` key prefix.
+
+**Share this** — the URL hash. A song deflates to about 335 bytes and base64urls
+to roughly 450 characters, which fits a link comfortably. `#s=` carries the
+compressed form via the browser's own `CompressionStream('deflate-raw')`; `#j=`
+is the uncompressed fallback. Opening a link loads that song over whatever was
+there, putting the previous state into Undo first.
+
+**Back it up** — Download and Open file, as plain JSON. Portable, diffable, and
+the only form that survives a cleared browser.
+
+Published as a Claude Artifact the page additionally writes to the artifact's
+document store, giving named save slots that persist across devices, and uses
+the `downloads` capability for saving files. Outside that environment
+`window.claude` is absent, every capability call resolves to nothing, and the
+page falls back to the three mechanisms above. The URL hash does not survive the
+artifact viewer, which passes only a bare `#name`, so link sharing is a
+GitHub Pages feature.
 
 ## Notes on the audio
 
@@ -85,3 +106,7 @@ Three bugs found while using it, all worth knowing if you write Web Audio:
 - **Swing must be applied at a chosen grid.** Delaying every second 16th does
   nothing to a pattern written in 8th notes, because its notes are all on the
   first of each pair.
+- **A tempo-synced delay is a rhythmic instrument.** At a dotted eighth it lands
+  3 steps later, so a melody whose notes are 3 steps apart has every echo arrive
+  about 25 ms from the next note — a flam, not an echo. Hence the Delay time
+  control.
