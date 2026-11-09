@@ -1868,9 +1868,20 @@ function wire(){
   fileIn.addEventListener("change", ()=>{ openSongFile(fileIn.files && fileIn.files[0]); fileIn.value = ""; });
 
   const KEYMAP = {a:0,w:1,s:2,e:3,d:4,f:5,t:6,g:7,y:8,h:9,u:10,j:11,k:12,o:13,l:14,p:15};
+  /* Only genuine text entry should swallow the shortcuts. A slider keeps focus
+     after you drag it, and space does nothing useful there, so letting the
+     browser have it just scrolls the page when you meant to start the
+     transport. A select keeps space, which is how its list is opened. */
+  function isTextEntry(el){
+    if(!el) return false;
+    if(el.isContentEditable) return true;
+    const tag = el.tagName;
+    if(tag === "TEXTAREA" || tag === "SELECT") return true;
+    if(tag !== "INPUT") return false;
+    return !/^(range|checkbox|radio|button|submit|reset|color|file)$/i.test(el.type || "text");
+  }
   addEventListener("keydown", ev=>{
-    const tag = (ev.target && ev.target.tagName) || "";
-    if(/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+    if(isTextEntry(ev.target)) return;
     if(ev.code === "Space"){ ev.preventDefault(); playing ? stopTransport() : startTransport(); return; }
     const k = ev.key.toLowerCase();
     if(ev.repeat || !(k in KEYMAP)) return;
