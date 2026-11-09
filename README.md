@@ -3,7 +3,7 @@
 **[Play it &rarr;](https://ericeijkelenboom.github.io/pocket-groovebox/)**
 
 A playable groovebox in a single HTML file. Eight voices, a 16-step sequencer,
-eight patterns chained into a song. No dependencies, no build step, no samples —
+and eight patterns chained into a song. No dependencies, no build step, no samples —
 every sound is synthesised with the Web Audio API.
 
 Built as a way to learn how hardware grooveboxes (Korg Volca, Novation Circuit,
@@ -23,7 +23,7 @@ click, as browsers require.
 | `groovebox.html` | the canonical source — markup, styles and script in one file |
 | `index.html` | generated standalone page; run `python3 build.py` after editing the source |
 | `build.py` | wraps the source in a document skeleton |
-| `songs/default.json` | the song the page opens on, in the pattern-code format below |
+| `songs/default.json` | the four-bar song the page opens on, in the pattern-code format below |
 | `make_icon.py` | regenerates `icon.png`, the home-screen icon |
 | `manifest.webmanifest` | web app manifest, for installing to a home screen |
 
