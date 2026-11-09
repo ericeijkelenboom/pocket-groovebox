@@ -24,10 +24,27 @@ click, as browsers require.
 | `index.html` | generated standalone page; run `python3 build.py` after editing the source |
 | `build.py` | wraps the source in a document skeleton |
 | `songs/default.json` | the song the page opens on, in the pattern-code format below |
+| `make_icon.py` | regenerates `icon.png`, the home-screen icon |
+| `manifest.webmanifest` | web app manifest, for installing to a home screen |
 
 `groovebox.html` deliberately has no `<html>`/`<head>`: it is also published as a
 Claude Artifact, where the platform supplies those. `build.py` adds them so the
 same page works as a plain file.
+
+## On a tablet
+
+Open the site in Safari and use **Share &rarr; Add to Home Screen**. It then
+launches without browser chrome, which suits a step sequencer, and the screen
+stays awake while the transport runs.
+
+Doing so also protects your work: Safari clears script-writable storage after
+seven days without a visit, but a page installed to the home screen is exempt.
+Export to a file if a song matters.
+
+Touch targets grow under `(pointer: coarse)` — step buttons to 40px, piano roll
+rows to 26px, pattern banks to 44px — and a fast double tap on the grid will not
+be read as a zoom gesture. Note that iOS silences Web Audio entirely while the
+device is in silent mode.
 
 ## The voices
 

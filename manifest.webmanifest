@@ -1,0 +1,14 @@
+{
+  "name": "Pocket Groovebox MF-1",
+  "short_name": "MF-1",
+  "description": "An eight-voice groovebox with a 16-step sequencer.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1b1d20",
+  "theme_color": "#1b1d20",
+  "icons": [
+    { "src": "icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}

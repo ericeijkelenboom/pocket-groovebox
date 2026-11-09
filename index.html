@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MF-1">
+<meta name="theme-color" content="#1b1d20">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;font:14px system-ui,sans-serif}
@@ -165,6 +173,27 @@ details.help[open] summary{margin-bottom:10px;color:var(--ink)}
   .utils{margin-left:0}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Touch. A fingertip needs a far bigger target than a pointer, so grow the
+   grids where the input is coarse and leave the desktop layout compact.
+   touch-action:manipulation stops a fast double tap being read as zoom. */
+button,.st,.cell,.bank,.slot,input[type=range]{touch-action:manipulation}
+.st,.cell,.bank,.slot,.mute,.keylbl{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+@media (pointer:coarse){
+  .st{height:40px}
+  .mute{width:30px;height:30px;font-size:11px}
+  .cell{height:26px}
+  .keylbl{height:26px;line-height:26px;font-size:11px}
+  .roll{grid-template-columns:48px repeat(16,minmax(0,1fr));gap:3px}
+  .rollwrap{max-height:62vh}
+  .bank{width:46px;height:44px;font-size:16px}
+  .slot{height:42px;font-size:15px}
+  .btn{padding:10px 13px}
+  input[type=range]{height:34px}
+  input[type=range]::-webkit-slider-thumb{width:18px;height:26px;margin-top:-11px}
+  input[type=range]::-moz-range-thumb{width:16px;height:25px}
+  input[type=text]{padding:10px}
+}
 </style>
 
 <div class="shell">
@@ -646,6 +675,23 @@ function voiceOn(id, note, t, vel){
 }
 const lastNote = {};
 
+/* Hold the screen awake while the transport runs — a tablet dimming mid-loop
+   is the main annoyance of using this away from a desk. The lock is dropped
+   whenever the page is hidden, so re-take it when it comes back. */
+let wakeLock = null;
+async function keepAwake(on){
+  try{
+    if(on){
+      if(!wakeLock && navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen");
+    }else if(wakeLock){
+      const w = wakeLock; wakeLock = null; await w.release();
+    }
+  }catch(e){ wakeLock = null; }
+}
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "visible" && playing) keepAwake(true);
+});
+
 /* ======================= transport ======================= */
 let playing=false, stepIdx=0, nextTime=0, slotIdx=0, playPat="E", timer=null;
 const uiQueue = [];
@@ -671,6 +717,7 @@ function startTransport(){
   nextTime = ctx.currentTime + 0.08;
   timer = setInterval(scheduler, 25);
   scheduler();
+  keepAwake(true);
   document.getElementById("play").classList.add("on");
 }
 function stopTransport(){
@@ -678,6 +725,7 @@ function stopTransport(){
   if(timer) clearInterval(timer);
   timer = null;
   openHat = null;
+  keepAwake(false);
   uiQueue.length = 0;
   document.getElementById("play").classList.remove("on");
   document.querySelectorAll(".st.cue,.cell.cue,.rk.cue").forEach(e=>e.classList.remove("cue"));
