@@ -93,23 +93,3 @@ the `downloads` capability for saving files. Outside that environment
 page falls back to the three mechanisms above. The URL hash does not survive the
 artifact viewer, which passes only a bare `#name`, so link sharing is a
 GitHub Pages feature.
-
-## Notes on the audio
-
-Three bugs found while using it, all worth knowing if you write Web Audio:
-
-- **`cancelScheduledValues` does not hold the current value.** It removes the
-  in-flight ramp, and the parameter falls back to the last event that
-  *completed* — usually the attack. Cancelling a fade-out therefore jumps the
-  gain to peak. Use `cancelAndHoldAtTime`.
-- **`AudioParam.value` is meaningless for automation scheduled in the future.**
-  It reports the node's intrinsic value, not where the envelope will be. Reading
-  it inside a release scheduled ahead of time returned `1` and gave every note a
-  second attack 20-odd dB louder than the first.
-- **Swing must be applied at a chosen grid.** Delaying every second 16th does
-  nothing to a pattern written in 8th notes, because its notes are all on the
-  first of each pair.
-- **A tempo-synced delay is a rhythmic instrument.** At a dotted eighth it lands
-  3 steps later, so a melody whose notes are 3 steps apart has every echo arrive
-  about 25 ms from the next note — a flam, not an echo. Hence the Delay time
-  control.
